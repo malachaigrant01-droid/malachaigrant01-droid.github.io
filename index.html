@@ -22,6 +22,10 @@ th{background:#12141a;color:#8a8b90;font-weight:500}
 footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2rem}
     .rose{display:flex;justify-content:center;padding:1.5rem 0 0}
     svg{width:160px;height:160px}
+    .status{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
+    .pill{font-family:ui-monospace,monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid #2a2c33;padding:.28rem .5rem;color:#c5ccd8}
+    .pill.on{border-color:#6f8f6a;color:#b7c9b3}
+    .pill.wait{border-color:#5c5346;color:#c4b49a}
   </style>
 </head>
 <body>
@@ -33,13 +37,45 @@ footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2re
     <h1>ABiZmuth</h1>
     <p class="kicker">AI Investigation OSINT</p>
     <p>Public-source desk for authorised research. Journalism, academic work, education, public-interest advocacy. Human oversight required.</p>
-    <p><a href="./legal/">Legal hub</a> · <a href="./legal/acceptable-use.html">Acceptable use</a> · <a href="./legal/ai-disclosure.html">AI disclosure</a></p>
+    <p><a href="./legal/">Legal hub</a> · <a href="./legal/acceptable-use.html">Acceptable use</a> · <a href="./legal/ai-disclosure.html">AI disclosure</a> · <a href="./skills/">Skill foundry</a></p>
   </header>
   <main>
     <h2>What this is</h2>
     <p>The GitHub tree is the archival policy copy. The working desk lives in the product surface. Notes stay local. Open feeds: Nominatim, Open-Meteo, USGS, BBC, ABC, Police.uk where it applies.</p>
     <h2>What this is not</h2>
     <p>Not a law-enforcement system. Not a people-search broker. Not a licence to dox, stalk, or access closed systems.</p>
+
+    <h2>Publish</h2>
+    <div class="status" aria-label="Publish status">
+      <span class="pill on">GitHub Pages live</span>
+      <span class="pill wait">Cloudflare Pages — Connect to Git</span>
+      <span class="pill wait">Custom domain — after first Pages deploy</span>
+    </div>
+    <p>Public hub: <a href="https://malachaigrant01-droid.github.io">malachaigrant01-droid.github.io</a>. Cloudflare host after Connect to Git: <span class="mono">abizmuth-hub.pages.dev</span> (public hub) and <span class="mono">abizmuth.pages.dev</span> (private archive <span class="mono">site/</span>).</p>
+    <table>
+      <thead>
+        <tr><th>Surface</th><th>Repo</th><th>Pages project</th><th>Output</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Public hub</td><td class="mono">malachaigrant01-droid.github.io</td><td class="mono">abizmuth-hub</td><td class="mono">.</td></tr>
+        <tr><td>Archive</td><td class="mono">ABiZmuth</td><td class="mono">abizmuth</td><td class="mono">site</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Dashboard: Workers &amp; Pages → Create → Pages → Connect to Git → authorize the Cloudflare Workers &amp; Pages GitHub App → production branch <span class="mono">main</span>, build command empty. A wrangler Action is wired but idle until Cloudflare API secrets exist. Files ready is not the same as the domain live on Cloudflare.</p>
+
+    <h2>Cloudflare login connections</h2>
+    <p>Access identity providers are optional. The legal hub stays public unless a Zero Trust application is added on the hostname.</p>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Where</th><th>Callback</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>GitHub</td><td>OAuth App (not the Pages GitHub App)</td><td class="mono">https://&lt;team&gt;.cloudflareaccess.com/cdn-cgi/access/callback</td></tr>
+        <tr><td>Google</td><td>OAuth client, type Web application</td><td class="mono">same callback + JS origin</td></tr>
+        <tr><td>One-time PIN</td><td>Zero Trust → Identity providers</td><td>Email from <span class="mono">noreply@notify.cloudflare.com</span> — not auto-added on new orgs</td></tr>
+      </tbody>
+    </table>
+    <p>Agent skill: <a href="./skills/cloudflare-login-connections/">cloudflare-login-connections</a>.</p>
   </main>
   <footer>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</footer>
 </body>

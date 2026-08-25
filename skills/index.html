@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skill foundry — ABiZmuth</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="../legal.css" />
+</head>
+<body>
+  <header>
+    <p class="kicker">ABiZmuth · Foundry</p>
+    <h1>Skill foundry</h1>
+    <p class="muted">Agent skills that ship with the hub. Anvil in the product surface is the editor; this tree is the published copy.</p>
+    <nav><a href="../">Home</a> <a href="../legal/">Legal</a></nav>
+  </header>
+  <main>
+    <h2>cloudflare-login-connections</h2>
+    <p>Connect GitHub to Cloudflare Pages, attach a custom domain, and wire Cloudflare Access login methods (GitHub, Google, one-time PIN).</p>
+    <p>
+      <a href="./cloudflare-login-connections/SKILL.md">SKILL.md</a> ·
+      <a href="./cloudflare-login-connections/references/pages-git.md">Pages Git</a> ·
+      <a href="./cloudflare-login-connections/references/access-idp.md">Access IdP</a> ·
+      <a href="./cloudflare-login-connections/references/custom-domain.md">Custom domain</a>
+    </p>
+    <table>
+      <thead>
+        <tr><th>Trigger</th><th>Fires</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Publish domain inside of Cloudflare</td><td>yes</td></tr>
+        <tr><td>Connect GitHub to Cloudflare Pages</td><td>yes</td></tr>
+        <tr><td>Add Cloudflare Access login for GitHub, Google, and one-time PIN</td><td>yes</td></tr>
+        <tr><td>Point GitHub Pages at a custom domain with a CNAME to github.io</td><td>no — different host</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Honesty gate: no Cloudflare session in this publish path. <span class="mono">*.pages.dev</span> and the custom domain stay pending until Connect to Git is authorised in the dashboard.</p>
+  </main>
+  <footer>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</footer>
+</body>
+</html>
