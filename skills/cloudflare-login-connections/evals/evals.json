@@ -1,0 +1,42 @@
+{
+  "skill": "cloudflare-login-connections",
+  "test_cases": [
+    {
+      "name": "connect_abizmuth_pages_git",
+      "input": "Connect my ABiZmuth repo to Cloudflare Pages and publish the domain.",
+      "assertions": [
+        "Uses Pages project name abizmuth and output directory site",
+        "Instructs dashboard path Workers & Pages → Create → Pages → Connect to Git",
+        "Leaves build command empty for the static site",
+        "Does not claim the Pages deploy succeeded without a Cloudflare session or API token"
+      ]
+    },
+    {
+      "name": "access_github_google_otp",
+      "input": "Add Cloudflare login connections for GitHub, Google, and one-time PIN.",
+      "assertions": [
+        "Uses Zero Trust → Integrations → Identity providers",
+        "Sets GitHub Homepage URL to https://<team>.cloudflareaccess.com and callback to https://<team>.cloudflareaccess.com/cdn-cgi/access/callback",
+        "Notes that OTP is no longer added automatically on new Zero Trust orgs",
+        "Does not invent OAuth client IDs or secrets"
+      ]
+    },
+    {
+      "name": "custom_domain_on_pages",
+      "input": "Publish the domain inside of Cloudflare on the Pages project.",
+      "assertions": [
+        "Uses Pages project → Custom domains → Set up a domain",
+        "Points DNS at <project>.pages.dev, not at GitHub Pages",
+        "Does not treat a GitHub Pages apex CNAME as the Cloudflare publish path"
+      ]
+    },
+    {
+      "name": "rejects_github_pages_cname_only",
+      "input": "Point my GitHub Pages site with a CNAME at github.io. Do not use Cloudflare Pages.",
+      "assertions": [
+        "Does not run Cloudflare Pages Connect to Git for a GitHub-Pages-only CNAME request",
+        "Does not invent a Cloudflare API token or attach a Pages custom domain"
+      ]
+    }
+  ]
+}

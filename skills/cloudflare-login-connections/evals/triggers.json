@@ -1,0 +1,13 @@
+{
+  "skill": "cloudflare-login-connections",
+  "test_cases": [
+    { "input": "Publish domain inside of Cloudflare", "should_trigger": true },
+    { "input": "Connect GitHub to Cloudflare Pages", "should_trigger": true },
+    { "input": "Add Cloudflare Access login for GitHub, Google, and one-time PIN", "should_trigger": true },
+    { "input": "Attach a custom domain to the Pages project", "should_trigger": true },
+    { "input": "Cloudflare login connections skill", "should_trigger": true },
+    { "input": "Rotate this PDF 90 degrees", "should_trigger": false },
+    { "input": "Deploy this app to Vercel", "should_trigger": false },
+    { "input": "Point GitHub Pages at a custom domain with a CNAME to github.io", "should_trigger": false }
+  ]
+}
