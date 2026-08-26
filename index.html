@@ -26,6 +26,11 @@ footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2re
     .pill{font-family:ui-monospace,monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid #2a2c33;padding:.28rem .5rem;color:#c5ccd8}
     .pill.on{border-color:#6f8f6a;color:#b7c9b3}
     .pill.wait{border-color:#5c5346;color:#c4b49a}
+    .pay{display:inline-block;font-family:ui-monospace,monospace;font-size:.8rem;
+         letter-spacing:.08em;text-transform:uppercase;text-decoration:none;
+         border:1px solid #6f8f6a;color:#b7c9b3;padding:.6rem 1.1rem;margin:.4rem 0}
+    .pay:hover{background:#12141a;color:#e8e6e1}
+    .pay[aria-disabled="true"]{border-color:#5c5346;color:#c4b49a;cursor:not-allowed}
   </style>
 </head>
 <body>
@@ -62,6 +67,53 @@ footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2re
       </tbody>
     </table>
     <p class="muted">Dashboard: Workers &amp; Pages → Create → Pages → Connect to Git → authorize the Cloudflare Workers &amp; Pages GitHub App → production branch <span class="mono">main</span>, build command empty. A wrangler Action is wired but idle until Cloudflare API secrets exist. Files ready is not the same as the domain live on Cloudflare.</p>
+
+    <h2>Payments</h2>
+    <div class="status" aria-label="Payment status">
+      <span class="pill" id="pay-mode">Stripe — not configured</span>
+      <span class="pill wait">Live keys — dashboard only</span>
+    </div>
+    <p>Engagements are invoiced through Stripe. The button opens a Stripe-hosted
+       payment page; card details go from the payer's browser directly to Stripe
+       and never reach this site or its host.</p>
+
+    <a class="pay" id="pay-link" href="#" aria-disabled="true">Payment link not set</a>
+
+    <p class="muted">This is a static page, so there is no server to hold a Stripe
+       secret key — and a Payment Link needs none. That keeps the secret in the
+       Stripe dashboard, keeps card data off this infrastructure, and keeps this
+       site out of PCI scope. Publishable and secret keys are not required here
+       and must not be committed.</p>
+
+    <table>
+      <thead>
+        <tr><th>Step</th><th>Where</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Activate the account</td><td>Stripe → Activate payments</td><td>Business details plus a bank account for payouts. Until this is done the account is test-only.</td></tr>
+        <tr><td>Toggle to live</td><td>Stripe dashboard, top-left</td><td>Test and live are separate worlds. A link created in test mode never takes real money.</td></tr>
+        <tr><td>Create the Payment Link</td><td>Stripe → Payment links → New</td><td>Set a fixed price, or let the payer choose an amount and set a minimum there.</td></tr>
+        <tr><td>Paste it here</td><td class="mono">index.html</td><td>Replace <span class="mono">STRIPE_PAYMENT_LINK</span> below. The button stays disabled until you do.</td></tr>
+      </tbody>
+    </table>
+
+    <script>
+      // The button is inert until a real link replaces the placeholder. A payment
+      // control that looks live but is not is worse than no control at all — a
+      // payer who clicks it and lands nowhere assumes they have already paid.
+      (function () {
+        var LINK = "STRIPE_PAYMENT_LINK";
+        var a = document.getElementById("pay-link");
+        var mode = document.getElementById("pay-mode");
+        if (!/^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//.test(LINK)) return;
+        a.href = LINK;
+        a.textContent = "Pay via Stripe";
+        a.setAttribute("aria-disabled", "false");
+        a.rel = "noopener";
+        mode.textContent = "Stripe — live";
+        mode.className = "pill on";
+      })();
+    </script>
 
     <h2>Cloudflare login connections</h2>
     <p>Access identity providers are optional. The legal hub stays public unless a Zero Trust application is added on the hostname.</p>
