@@ -1,0 +1,104 @@
+/* Design register — specimen blocks.
+ *
+ * Each direction is shown in its own palette and type, so the register reads
+ * as the designs rather than as a description of them. Every colour lives here
+ * rather than in a style attribute: the site's CSP forbids inline style, and a
+ * specimen page is exactly where it would be tempting to break that.
+ */
+
+.specimen {
+  border: 1px solid var(--rule);
+  margin: 1rem 0 1.6rem;
+}
+
+.specimen-body { padding: 1.6rem 1.5rem 1.4rem; }
+
+.specimen-display {
+  margin: 0 0 .5rem;
+  font-weight: 400;
+  font-size: 1.9rem;
+  line-height: 1.14;
+  letter-spacing: -.02em;
+}
+
+.specimen-copy { margin: 0; font-size: .92rem; line-height: 1.6; max-width: 46ch; }
+
+.specimen-kicker {
+  margin: 0 0 .7rem;
+  font-size: .62rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+/* Palette strip */
+.swatches { display: flex; flex-wrap: wrap; gap: 0; margin: 1.3rem 0 0; }
+.swatch {
+  flex: 1 1 0;
+  min-width: 64px;
+  padding: .5rem .55rem .45rem;
+  font-family: ui-monospace, "IBM Plex Mono", monospace;
+  font-size: .6rem;
+  letter-spacing: .04em;
+}
+
+/* --- Institutional (adopted) ------------------------------------------- */
+.d-inst { background: #faf8f5; }
+.d-inst .specimen-display { font-family: Georgia, "Iowan Old Style", serif; color: #14202f; }
+.d-inst .specimen-copy { color: #46535f; }
+.d-inst .specimen-kicker { color: #7a3b2e; }
+.d-inst .sw1 { background: #faf8f5; color: #8a8378; }
+.d-inst .sw2 { background: #f2eee8; color: #8a8378; }
+.d-inst .sw3 { background: #ddd6cc; color: #46535f; }
+.d-inst .sw4 { background: #7a3b2e; color: #faf8f5; }
+.d-inst .sw5 { background: #14202f; color: #faf8f5; }
+
+/* --- Enterprise platform (draft) --------------------------------------- */
+.d-ent { background: #ffffff; }
+.d-ent .specimen-display {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 600; color: #0f1729; letter-spacing: -.028em;
+}
+.d-ent .specimen-copy { color: #4b5769; }
+.d-ent .specimen-kicker { color: #1f4fd8; }
+.d-ent .sw1 { background: #ffffff; color: #77839a; }
+.d-ent .sw2 { background: #f7f9fd; color: #77839a; }
+.d-ent .sw3 { background: #e6eaf2; color: #4b5769; }
+.d-ent .sw4 { background: #1f4fd8; color: #ffffff; }
+.d-ent .sw5 { background: #0f1729; color: #ffffff; }
+
+/* --- Financial authority (draft) --------------------------------------- */
+.d-fin { background: #0c1420; }
+.d-fin .specimen-display { font-family: Georgia, "Iowan Old Style", serif; color: #e4e7ec; }
+.d-fin .specimen-copy { color: #9aa7b8; }
+.d-fin .specimen-kicker { color: #c9a227; }
+.d-fin .sw1 { background: #0c1420; color: #6b7a8f; }
+.d-fin .sw2 { background: #1d2b3d; color: #9aa7b8; }
+.d-fin .sw3 { background: #5c6a7d; color: #0c1420; }
+.d-fin .sw4 { background: #c9a227; color: #0c1420; }
+.d-fin .sw5 { background: #e4e7ec; color: #0c1420; }
+
+/* --- Retired dark hub --------------------------------------------------- */
+.d-old { background: #0a0b0d; }
+.d-old .specimen-display { font-family: Georgia, serif; color: #e8e6e1; }
+.d-old .specimen-copy { color: #8a8b90; }
+.d-old .specimen-kicker { color: #8a8b90; }
+.d-old .sw1 { background: #0a0b0d; color: #5c5d63; }
+.d-old .sw2 { background: #12141a; color: #8a8b90; }
+.d-old .sw3 { background: #2a2c33; color: #c5ccd8; }
+.d-old .sw4 { background: #c5ccd8; color: #0a0b0d; }
+.d-old .sw5 { background: #e8e6e1; color: #0a0b0d; }
+
+/* Authorisation markers */
+.auth {
+  display: inline-block;
+  font-size: .62rem;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  border: 1px solid var(--rule);
+  padding: .28rem .55rem;
+  color: var(--body);
+  margin: 0 .3rem .3rem 0;
+}
+.auth-public  { border-color: #4a6b46; color: #4a6b46; }
+.auth-org     { border-color: #8a6d3b; color: #8a6d3b; }
+.auth-retired { border-color: var(--rule); color: var(--quiet); }
