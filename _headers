@@ -3,3 +3,8 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/.well-known/discord
+  Content-Type: text/plain; charset=utf-8
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff

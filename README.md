@@ -17,3 +17,24 @@ Project name: `abizmuth-hub`. Output directory: `.` (this repo root). Build comm
 Wrangler Action (`.github/workflows/cloudflare-pages.yml`) is `workflow_dispatch` only. It needs GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Prefer Connect to Git so those secrets stay out of GitHub.
 
 Agent skill: [`skills/cloudflare-login-connections/`](./skills/cloudflare-login-connections/).
+
+## Discord domain verification (`habiz.computer`)
+
+Discord accepts either proof. Both carry the same hash.
+
+| Method | Where | Value |
+|---|---|---|
+| File | [`.well-known/discord`](./.well-known/discord) → `https://www.habiz.computer/.well-known/discord` | `dh=777ed5e838bf74499edf3f93534843704bcaa2e7` |
+| DNS TXT | `_discord.www.habiz.computer` | `dh=777ed5e838bf74499edf3f93534843704bcaa2e7` |
+
+The file ships from this repo, so it only answers on the hostnames this Pages
+project (`abizmuth-hub`) serves. If `www.habiz.computer` is attached to a
+different project, add the same file there or use the DNS TXT record instead —
+the TXT record is served by DNS and does not depend on which origin answers.
+
+Check before clicking **Verify** in Discord:
+
+```bash
+curl -sS https://www.habiz.computer/.well-known/discord
+dig +short TXT _discord.www.habiz.computer
+```
