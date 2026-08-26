@@ -31,6 +31,13 @@ footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2re
          border:1px solid #6f8f6a;color:#b7c9b3;padding:.6rem 1.1rem;margin:.4rem 0}
     .pay:hover{background:#12141a;color:#e8e6e1}
     .pay[aria-disabled="true"]{border-color:#5c5346;color:#c4b49a;cursor:not-allowed}
+    .socials{list-style:none;padding:0;margin:.75rem 0;display:flex;flex-wrap:wrap;gap:.5rem}
+    .socials a{display:inline-block;font-family:ui-monospace,monospace;font-size:.75rem;
+               letter-spacing:.06em;text-decoration:none;border:1px solid #2a2c33;
+               padding:.35rem .6rem;color:#c5ccd8}
+    .socials a:hover{border-color:#3c4049;color:#e8e6e1;background:#12141a}
+    .socials .site{color:#8a8b90;text-transform:uppercase;font-size:.65rem;
+                   letter-spacing:.12em;margin-right:.35rem}
   </style>
 </head>
 <body>
@@ -128,6 +135,87 @@ footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2re
       </tbody>
     </table>
     <p>Agent skill: <a href="./skills/cloudflare-login-connections/">cloudflare-login-connections</a>.</p>
+    <h2>Elsewhere</h2>
+    <ul class="socials" id="socials" aria-label="Social profiles"></ul>
+    <p class="muted" id="socials-empty">Only verified profiles are listed. To add one,
+       fill its handle in the <span class="mono">SOCIALS</span> map in
+       <span class="mono">index.html</span> — an empty entry renders nothing rather
+       than a dead link.</p>
+
+    <script>
+      // Handles only, not URLs — the template per platform is below, so a typo
+      // cannot turn into a link pointing somewhere unintended. An empty string
+      // means "not set" and renders nothing: a social row on a public site that
+      // links to a 404, or worse to someone else's account, is a real cost.
+      //
+      // Mastodon is the exception and takes a full https URL, because the
+      // instance is part of the identity and cannot be templated.
+      var SOCIALS = {
+        github:    "malachaigrant01-droid",
+        x:         "",
+        linkedin:  "",
+        instagram: "",
+        youtube:   "",
+        bluesky:   "",
+        tiktok:    "",
+        facebook:  "",
+        threads:   "",
+        substack:  "",
+        medium:    "",
+        mastodon:  ""
+      };
+
+      (function () {
+        var TEMPLATES = {
+          github:    ["GitHub",    "https://github.com/"],
+          x:         ["X",         "https://x.com/"],
+          linkedin:  ["LinkedIn",  "https://www.linkedin.com/in/"],
+          instagram: ["Instagram", "https://instagram.com/"],
+          youtube:   ["YouTube",   "https://youtube.com/@"],
+          bluesky:   ["Bluesky",   "https://bsky.app/profile/"],
+          tiktok:    ["TikTok",    "https://tiktok.com/@"],
+          facebook:  ["Facebook",  "https://facebook.com/"],
+          threads:   ["Threads",   "https://threads.net/@"],
+          substack:  ["Substack",  "https://substack.com/@"],
+          medium:    ["Medium",    "https://medium.com/@"]
+        };
+        var list = document.getElementById("socials");
+        var empty = document.getElementById("socials-empty");
+        var count = 0;
+
+        Object.keys(SOCIALS).forEach(function (key) {
+          var raw = (SOCIALS[key] || "").trim();
+          if (!raw) return;
+          var label, href;
+          if (key === "mastodon") {
+            // Full URL required; reject anything that is not plain https.
+            if (!/^https:\/\/[a-z0-9.-]+\/@[A-Za-z0-9_]+\/?$/i.test(raw)) return;
+            label = "Mastodon";
+            href = raw;
+          } else {
+            var t = TEMPLATES[key];
+            if (!t) return;
+            // A handle is a handle. Anything with a slash, scheme, or dot could
+            // redirect the link off-platform, so it is dropped rather than shown.
+            if (!/^[A-Za-z0-9_.-]{1,40}$/.test(raw) || raw.indexOf("..") !== -1) return;
+            label = t[0];
+            href = t[1] + encodeURIComponent(raw);
+          }
+          var li = document.createElement("li");
+          var a = document.createElement("a");
+          a.href = href;
+          a.rel = "me noopener";
+          a.innerHTML = '<span class="site"></span>';
+          a.firstChild.textContent = label;
+          a.appendChild(document.createTextNode(raw));
+          li.appendChild(a);
+          list.appendChild(li);
+          count += 1;
+        });
+
+        if (count) empty.style.display = "none";
+      })();
+    </script>
   </main>
   <footer>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</footer>
 </body>
