@@ -1,5 +1,31 @@
+# Cloudflare Pages header syntax.
+#
+# IMPORTANT: GitHub Pages does not read this file. It has no mechanism for
+# custom response headers, so while the hub is served from
+# malachaigrant01-droid.github.io NONE of the rules below are applied — the
+# site runs with whatever GitHub sends. They take effect only once Cloudflare
+# Pages serves the domain. Treat this as configuration staged for that move,
+# not as protection currently in force.
+
 /*
+  # Constrain what the page may load or execute. Everything is denied by
+  # default and then enumerated, so a script injected into the markup has no
+  # origin it is allowed to run from and nowhere to send anything.
+  # This is only possible because no inline <script> or <style> remains:
+  # a single inline block would force 'unsafe-inline', which removes most of
+  # the protection this header buys.
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; manifest-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+
+  # Refuse to be framed — belt and braces with frame-ancestors above, which
+  # older browsers ignore.
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+  # No preload directive: submitting to the browser preload list is effectively
+  # irreversible and commits every subdomain. Left as a deliberate choice.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()

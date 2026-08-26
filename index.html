@@ -14,40 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="ABiZmuth" />
   <meta name="theme-color" content="#0a0b0d" />
-  <style>*{box-sizing:border-box}html,body{margin:0;background:#0a0b0d;color:#e8e6e1;font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.55}
-a{color:#c5ccd8}a:hover{color:#e8e6e1}
-header,main,footer{max-width:44rem;margin:0 auto;padding:1.25rem 1.1rem}
-header{padding-top:2rem;border-bottom:1px solid #1e2027}
-.kicker{font-family:ui-monospace,monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:#8a8b90}
-h1{font-family:Georgia,"Iowan Old Style",serif;font-weight:500;letter-spacing:-.03em;font-size:2rem;line-height:1.15;margin:.4rem 0 .75rem}
-h2{font-family:Georgia,serif;font-weight:500;font-size:1.15rem;margin:1.6rem 0 .5rem}
-p,li{color:#e8e6e1;font-size:.95rem}
-.muted{color:#8a8b90}
-nav a{margin-right:.85rem;font-size:.85rem}
-table{border-collapse:collapse;width:100%;font-size:.9rem;margin:1rem 0}
-th,td{border:1px solid #2a2c33;padding:.4rem .55rem;text-align:left;vertical-align:top}
-th{background:#12141a;color:#8a8b90;font-weight:500}
-.mono{font-family:ui-monospace,monospace;font-size:.85em}
-footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2rem}
-    .rose{display:flex;justify-content:center;padding:1.5rem 0 0}
-    svg{width:160px;height:160px}
-    .status{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0}
-    .pill{font-family:ui-monospace,monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid #2a2c33;padding:.28rem .5rem;color:#c5ccd8}
-    .pill.on{border-color:#6f8f6a;color:#b7c9b3}
-    .pill.wait{border-color:#5c5346;color:#c4b49a}
-    .pay{display:inline-block;font-family:ui-monospace,monospace;font-size:.8rem;
-         letter-spacing:.08em;text-transform:uppercase;text-decoration:none;
-         border:1px solid #6f8f6a;color:#b7c9b3;padding:.6rem 1.1rem;margin:.4rem 0}
-    .pay:hover{background:#12141a;color:#e8e6e1}
-    .pay[aria-disabled="true"]{border-color:#5c5346;color:#c4b49a;cursor:not-allowed}
-    .socials{list-style:none;padding:0;margin:.75rem 0;display:flex;flex-wrap:wrap;gap:.5rem}
-    .socials a{display:inline-block;font-family:ui-monospace,monospace;font-size:.75rem;
-               letter-spacing:.06em;text-decoration:none;border:1px solid #2a2c33;
-               padding:.35rem .6rem;color:#c5ccd8}
-    .socials a:hover{border-color:#3c4049;color:#e8e6e1;background:#12141a}
-    .socials .site{color:#8a8b90;text-transform:uppercase;font-size:.65rem;
-                   letter-spacing:.12em;margin-right:.35rem}
-  </style>
+  <link rel="stylesheet" href="/site.css" />
 </head>
 <body>
   <header>
@@ -109,27 +76,10 @@ footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2re
         <tr><td>Activate the account</td><td>Stripe → Activate payments</td><td>Business details plus a bank account for payouts. Until this is done the account is test-only.</td></tr>
         <tr><td>Toggle to live</td><td>Stripe dashboard, top-left</td><td>Test and live are separate worlds. A link created in test mode never takes real money.</td></tr>
         <tr><td>Create the Payment Link</td><td>Stripe → Payment links → New</td><td>Set a fixed price, or let the payer choose an amount and set a minimum there.</td></tr>
-        <tr><td>Paste it here</td><td class="mono">index.html</td><td>Replace <span class="mono">STRIPE_PAYMENT_LINK</span> below. The button stays disabled until you do.</td></tr>
+        <tr><td>Paste it here</td><td class="mono">app.js</td><td>Replace <span class="mono">STRIPE_PAYMENT_LINK</span> in <span class="mono">app.js</span>. The button stays disabled until you do.</td></tr>
       </tbody>
     </table>
 
-    <script>
-      // The button is inert until a real link replaces the placeholder. A payment
-      // control that looks live but is not is worse than no control at all — a
-      // payer who clicks it and lands nowhere assumes they have already paid.
-      (function () {
-        var LINK = "STRIPE_PAYMENT_LINK";
-        var a = document.getElementById("pay-link");
-        var mode = document.getElementById("pay-mode");
-        if (!/^https:\/\/(buy\.stripe\.com|[a-z0-9-]+\.stripe\.com)\//.test(LINK)) return;
-        a.href = LINK;
-        a.textContent = "Pay via Stripe";
-        a.setAttribute("aria-disabled", "false");
-        a.rel = "noopener";
-        mode.textContent = "Stripe — live";
-        mode.className = "pill on";
-      })();
-    </script>
 
     <h2>Cloudflare login connections</h2>
     <p>Access identity providers are optional. The legal hub stays public unless a Zero Trust application is added on the hostname.</p>
@@ -148,84 +98,11 @@ footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2re
     <ul class="socials" id="socials" aria-label="Social profiles"></ul>
     <p class="muted" id="socials-empty">Only verified profiles are listed. To add one,
        fill its handle in the <span class="mono">SOCIALS</span> map in
-       <span class="mono">index.html</span> — an empty entry renders nothing rather
+       <span class="mono">app.js</span> — an empty entry renders nothing rather
        than a dead link.</p>
 
-    <script>
-      // Handles only, not URLs — the template per platform is below, so a typo
-      // cannot turn into a link pointing somewhere unintended. An empty string
-      // means "not set" and renders nothing: a social row on a public site that
-      // links to a 404, or worse to someone else's account, is a real cost.
-      //
-      // Mastodon is the exception and takes a full https URL, because the
-      // instance is part of the identity and cannot be templated.
-      var SOCIALS = {
-        github:    "malachaigrant01-droid",
-        x:         "",
-        linkedin:  "",
-        instagram: "",
-        youtube:   "",
-        bluesky:   "",
-        tiktok:    "",
-        facebook:  "",
-        threads:   "",
-        substack:  "",
-        medium:    "",
-        mastodon:  ""
-      };
-
-      (function () {
-        var TEMPLATES = {
-          github:    ["GitHub",    "https://github.com/"],
-          x:         ["X",         "https://x.com/"],
-          linkedin:  ["LinkedIn",  "https://www.linkedin.com/in/"],
-          instagram: ["Instagram", "https://instagram.com/"],
-          youtube:   ["YouTube",   "https://youtube.com/@"],
-          bluesky:   ["Bluesky",   "https://bsky.app/profile/"],
-          tiktok:    ["TikTok",    "https://tiktok.com/@"],
-          facebook:  ["Facebook",  "https://facebook.com/"],
-          threads:   ["Threads",   "https://threads.net/@"],
-          substack:  ["Substack",  "https://substack.com/@"],
-          medium:    ["Medium",    "https://medium.com/@"]
-        };
-        var list = document.getElementById("socials");
-        var empty = document.getElementById("socials-empty");
-        var count = 0;
-
-        Object.keys(SOCIALS).forEach(function (key) {
-          var raw = (SOCIALS[key] || "").trim();
-          if (!raw) return;
-          var label, href;
-          if (key === "mastodon") {
-            // Full URL required; reject anything that is not plain https.
-            if (!/^https:\/\/[a-z0-9.-]+\/@[A-Za-z0-9_]+\/?$/i.test(raw)) return;
-            label = "Mastodon";
-            href = raw;
-          } else {
-            var t = TEMPLATES[key];
-            if (!t) return;
-            // A handle is a handle. Anything with a slash, scheme, or dot could
-            // redirect the link off-platform, so it is dropped rather than shown.
-            if (!/^[A-Za-z0-9_.-]{1,40}$/.test(raw) || raw.indexOf("..") !== -1) return;
-            label = t[0];
-            href = t[1] + encodeURIComponent(raw);
-          }
-          var li = document.createElement("li");
-          var a = document.createElement("a");
-          a.href = href;
-          a.rel = "me noopener";
-          a.innerHTML = '<span class="site"></span>';
-          a.firstChild.textContent = label;
-          a.appendChild(document.createTextNode(raw));
-          li.appendChild(a);
-          list.appendChild(li);
-          count += 1;
-        });
-
-        if (count) empty.style.display = "none";
-      })();
-    </script>
   </main>
+  <script src="/app.js" defer></script>
   <footer>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</footer>
 </body>
 </html>
