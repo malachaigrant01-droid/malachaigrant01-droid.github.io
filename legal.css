@@ -1,15 +1,125 @@
-*{box-sizing:border-box}html,body{margin:0;background:#0a0b0d;color:#e8e6e1;font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.55}
-a{color:#c5ccd8}a:hover{color:#e8e6e1}
-header,main,footer{max-width:44rem;margin:0 auto;padding:1.25rem 1.1rem}
-header{padding-top:2rem;border-bottom:1px solid #1e2027}
-.kicker{font-family:ui-monospace,monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:#8a8b90}
-h1{font-family:Georgia,"Iowan Old Style",serif;font-weight:500;letter-spacing:-.03em;font-size:2rem;line-height:1.15;margin:.4rem 0 .75rem}
-h2{font-family:Georgia,serif;font-weight:500;font-size:1.15rem;margin:1.6rem 0 .5rem}
-p,li{color:#e8e6e1;font-size:.95rem}
-.muted{color:#8a8b90}
-nav a{margin-right:.85rem;font-size:.85rem}
-table{border-collapse:collapse;width:100%;font-size:.9rem;margin:1rem 0}
-th,td{border:1px solid #2a2c33;padding:.4rem .55rem;text-align:left;vertical-align:top}
-th{background:#12141a;color:#8a8b90;font-weight:500}
-.mono{font-family:ui-monospace,monospace;font-size:.85em}
-footer{border-top:1px solid #1e2027;color:#5c5d63;font-size:.8rem;margin-top:2rem}
+/* Section trees — legal/ and skills/.
+ *
+ * Same institutional system as site.css: warm paper, ink navy, one oxblood
+ * accent, system-served type. Kept as a separate file because every page under
+ * those trees already links it; changing the tokens here moves all of them
+ * without touching a single page's markup.
+ *
+ * Type stays system-served for the same reason as site.css: the site's CSP sets
+ * font-src 'self', and a webfont host would mean opening that policy.
+ */
+
+:root {
+  --paper:   #faf8f5;
+  --surface: #f2eee8;
+  --ink:     #14202f;
+  --body:    #46535f;
+  --quiet:   #8a8378;
+  --rule:    #ddd6cc;
+  --accent:  #7a3b2e;
+  --accent-deep: #4a2119;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-deep); text-decoration: underline; }
+
+header, main, footer {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.4rem 1.4rem;
+}
+
+header {
+  padding-top: 3rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kicker {
+  font-size: .68rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 .6rem;
+}
+
+h1 {
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -.022em;
+  font-size: 2.3rem;
+  line-height: 1.12;
+  margin: .3rem 0 .8rem;
+  text-wrap: pretty;
+}
+
+/* A rule above every section suits a policy document: the boundaries between
+   clauses become visible without numbering them. */
+h2 {
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-weight: 600;
+  font-size: 1.22rem;
+  letter-spacing: -.008em;
+  margin: 2.2rem 0 .5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+header h1, header h2 { border-top: 0; padding-top: 0; }
+
+h3 {
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 1.3rem 0 .35rem;
+}
+
+p, li { color: var(--body); font-size: .95rem; }
+p { margin: .7rem 0; }
+li { margin: .3rem 0; }
+
+.muted { color: var(--quiet); font-size: .9rem; }
+
+nav { margin-top: .8rem; }
+nav a { margin-right: 1rem; font-size: .88rem; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: .88rem;
+  margin: 1.1rem 0;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: .55rem .7rem;
+  text-align: left;
+  vertical-align: top;
+  color: var(--body);
+}
+th {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: .8rem;
+  letter-spacing: .04em;
+}
+
+.mono { font-family: ui-monospace, "IBM Plex Mono", SFMono-Regular, monospace; font-size: .85em; }
+
+footer {
+  border-top: 1px solid var(--rule);
+  color: var(--quiet);
+  font-size: .82rem;
+  margin-top: 3rem;
+  padding-bottom: 3rem;
+}

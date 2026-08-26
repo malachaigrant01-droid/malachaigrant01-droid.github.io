@@ -1,0 +1,191 @@
+/* ABiZmuth — institutional design system.
+ *
+ * Warm paper, ink navy, a single oxblood accent. Replaces the previous dark
+ * treatment across the hub.
+ *
+ * Type is deliberately system-served. The direction this came from paired a
+ * Google display face, but the site's Content-Security-Policy sets
+ * font-src 'self' — loading it would mean opening the policy to a third-party
+ * host on every page view. Georgia and its Iowan Old Style fallback carry the
+ * same editorial register at no such cost.
+ *
+ * Kept in step with legal.css, which styles the section trees with the same
+ * tokens so the whole domain moves together.
+ */
+
+:root {
+  --paper:   #faf8f5;
+  --surface: #f2eee8;
+  --ink:     #14202f;
+  --body:    #46535f;
+  --quiet:   #8a8378;
+  --rule:    #ddd6cc;
+  --accent:  #7a3b2e;
+  --accent-deep: #4a2119;
+  --ok:      #4a6b46;
+  --wait:    #8a6d3b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-deep); text-decoration: underline; }
+
+header, main, footer {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.4rem 1.4rem;
+}
+
+header {
+  padding-top: 3rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kicker {
+  font-size: .68rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 .6rem;
+}
+
+h1 {
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -.022em;
+  font-size: 2.6rem;
+  line-height: 1.1;
+  margin: .3rem 0 .9rem;
+  text-wrap: pretty;
+}
+
+h2 {
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-weight: 600;
+  font-size: 1.28rem;
+  letter-spacing: -.008em;
+  margin: 2.4rem 0 .6rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--rule);
+}
+
+header h1, header h2 { border-top: 0; padding-top: 0; }
+
+h3 {
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-weight: 600;
+  font-size: 1.02rem;
+  margin: 1.4rem 0 .4rem;
+}
+
+p, li { color: var(--body); font-size: .96rem; }
+p { margin: .7rem 0; }
+
+.muted { color: var(--quiet); font-size: .9rem; }
+
+nav a { margin-right: 1rem; font-size: .88rem; }
+
+/* The compass mark sits smaller and left-aligned in this treatment — the
+   centred oversized version belonged to the dark layout. */
+.rose { display: flex; justify-content: flex-start; padding: 0 0 .4rem; }
+.rose svg { width: 56px; height: 56px; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: .89rem;
+  margin: 1.1rem 0;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: .55rem .7rem;
+  text-align: left;
+  vertical-align: top;
+  color: var(--body);
+}
+th {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: .8rem;
+  letter-spacing: .04em;
+}
+
+.mono { font-family: ui-monospace, "IBM Plex Mono", SFMono-Regular, monospace; font-size: .85em; }
+
+footer {
+  border-top: 1px solid var(--rule);
+  color: var(--quiet);
+  font-size: .82rem;
+  margin-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+/* Status chips */
+.status { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1rem 0; }
+.pill {
+  font-size: .66rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  padding: .32rem .6rem;
+  color: var(--body);
+}
+.pill.on   { border-color: var(--ok);   color: var(--ok);   background: transparent; }
+.pill.wait { border-color: var(--wait); color: var(--wait); background: transparent; }
+
+/* Payment control */
+.pay {
+  display: inline-block;
+  font-size: .78rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  color: var(--paper);
+  padding: .75rem 1.5rem;
+  margin: .5rem 0;
+}
+.pay:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); text-decoration: none; }
+.pay[aria-disabled="true"] {
+  background: transparent;
+  border-color: var(--rule);
+  color: var(--quiet);
+  cursor: not-allowed;
+}
+.pay[aria-disabled="true"]:hover { background: transparent; border-color: var(--rule); color: var(--quiet); }
+
+/* Social profiles */
+.socials { list-style: none; padding: 0; margin: .9rem 0; display: flex; flex-wrap: wrap; gap: .45rem; }
+.socials a {
+  display: inline-block;
+  font-size: .78rem;
+  text-decoration: none;
+  border: 1px solid var(--rule);
+  padding: .4rem .75rem;
+  color: var(--body);
+}
+.socials a:hover { border-color: var(--ink); color: var(--ink); background: var(--surface); text-decoration: none; }
+.socials .site {
+  color: var(--quiet);
+  text-transform: uppercase;
+  font-size: .62rem;
+  letter-spacing: .13em;
+  margin-right: .4rem;
+}
+
+/* Toggled from app.js. A class avoids mutating a style attribute,
+   which would force style-src 'unsafe-inline' in the CSP. */
+.hidden { display: none; }
