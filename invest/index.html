@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ABiZmuth Invest</title>
+  <meta name="description" content="Live prices across Property, AI, Stocks, Shares & ETFs and Crypto. Build fractional orders from A$2 per asset." />
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <div>
+        <p class="kicker">ABiZmuth · Invest</p>
+        <h1>Invest from A$2</h1>
+      </div>
+      <nav class="tabs" role="tablist">
+        <button class="tab on" data-view="markets" role="tab" aria-selected="true">Markets</button>
+        <button class="tab" data-view="auto" role="tab" aria-selected="false">Auto</button>
+        <button class="tab" data-view="portfolio" role="tab" aria-selected="false">Portfolio</button>
+        <button class="tab" data-view="settings" role="tab" aria-selected="false">Settings</button>
+      </nav>
+    </div>
+    <div class="wrap feeds" aria-live="polite">
+      <span class="pill" id="feed-fx">FX —</span>
+      <span class="pill" id="feed-crypto">Crypto —</span>
+      <span class="pill" id="feed-stocks">Stocks —</span>
+      <span class="pill mono" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Markets -->
+    <section id="view-markets" class="view">
+      <p class="warn">General information only, not personal advice. "Recommended" means <b>popular</b>: most widely held or highest live 24h trading volume. Popular is not the same as safe. Prices can fall to zero.</p>
+
+      <div id="categories" class="cats"></div>
+
+      <div id="category" class="category" hidden>
+        <div class="cat-head">
+          <button class="link" id="back">← All categories</button>
+          <h2 id="cat-title"></h2>
+          <p class="muted" id="cat-blurb"></p>
+        </div>
+        <div class="toolbar">
+          <input type="search" id="search" placeholder="Search name or ticker" aria-label="Search assets" />
+          <label class="check"><input type="checkbox" id="popular-only" checked /> Recommended only</label>
+          <button class="btn ghost" id="sel-popular">Select recommended</button>
+          <button class="btn ghost" id="sel-all">Select all</button>
+          <button class="btn ghost" id="sel-none">Clear</button>
+        </div>
+        <p class="muted legend">Signal: <b class="sig-buy">BUY</b> uptrend with rising momentum (strength 50–100) · <b class="sig-sell">PEAK</b> stretched and fading, a sell signal if you own it · <b class="sig-sell">FALLING</b> downtrend · HOLD nothing lined up · … still collecting price history. Hover or long-press a signal for the reason.</p>
+        <div class="table-scroll">
+          <table class="assets">
+            <thead><tr><th></th><th>Asset</th><th class="r">Price (A$)</th><th class="r">24h</th><th class="r hide-sm">Volume 24h</th><th class="hide-sm">Popularity</th><th>Signal</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Auto-trader -->
+    <section id="view-auto" class="view" hidden>
+      <h2>Auto-trader <span class="pill wait">Paper money</span></h2>
+      <p class="warn">This trades <b>virtual money</b> in this browser so you can see what the rules would do before risking anything. Nobody can predict a peak. The rules sell after signs of a top, or once the price drops a set % from its high. They will sometimes sell too early or buy just before a fall. If "Market move" beats the auto-trader's return, the rules aren't adding value.</p>
+      <div class="au-bar">
+        <button class="btn" id="au-toggle" type="button">Start auto-trader</button>
+        <span class="pill" id="au-status">Stopped</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="muted">Equity</span><b id="au-equity">—</b></div>
+        <div class="stat"><span class="muted">Return</span><b id="au-ret">—</b></div>
+        <div class="stat"><span class="muted">Market move since start</span><b id="au-bench">—</b></div>
+        <div class="stat"><span class="muted">Cash</span><b id="au-cash">—</b></div>
+        <div class="stat"><span class="muted">Open P/L</span><b id="au-open">—</b></div>
+        <div class="stat"><span class="muted">Realised P/L</span><b id="au-real">—</b></div>
+        <div class="stat"><span class="muted">Winning sells</span><b id="au-win">—</b></div>
+        <div class="stat"><span class="muted">Fees paid</span><b id="au-fees">—</b></div>
+      </div>
+      <p class="muted">"Market move" is the average change in the assets it could pick from since you first started it. That's roughly what holding them all would have done.</p>
+
+      <details class="au-cfg">
+        <summary>Rules and limits</summary>
+        <div class="grid">
+          <label class="field">Trade from <select id="au-scope"></select></label>
+          <label class="field">Starting cash (A$) <input type="number" id="au-start" min="10" step="10" inputmode="decimal" /><span class="muted" id="au-start-note"></span></label>
+          <label class="field">Per buy (A$, min 2) <input type="number" id="au-per" min="2" step="1" inputmode="decimal" /></label>
+          <label class="field">Max open positions <input type="number" id="au-max" min="1" max="236" step="1" inputmode="numeric" /></label>
+          <label class="field">Take profit at a likely peak once up (%) <input type="number" id="au-peak" min="0" max="100" step="0.5" inputmode="decimal" /></label>
+          <label class="field">Trailing stop (%) <input type="number" id="au-trail" min="0.5" max="50" step="0.5" inputmode="decimal" /></label>
+          <label class="field">Stop-loss (%) <input type="number" id="au-stop" min="0.5" max="90" step="0.5" inputmode="decimal" /></label>
+          <label class="field">Fee per trade (%) <input type="number" id="au-fee" min="0" max="10" step="0.1" inputmode="decimal" /></label>
+          <label class="field">Flat fee per trade (A$) <input type="number" id="au-flat" min="0" max="50" step="0.5" inputmode="decimal" /></label>
+        </div>
+        <p class="muted">Many share brokers charge a flat fee on every trade. Enter yours to see what it does to small automatic trades.</p>
+        <p><button class="btn ghost" id="au-reset" type="button">Reset paper account</button> <button class="btn ghost" id="au-export" type="button">Export trades CSV</button></p>
+      </details>
+
+      <h3>Open positions</h3>
+      <div class="table-scroll">
+        <table class="assets">
+          <thead><tr><th>Asset</th><th class="r">Cost (A$)</th><th class="r">Value (A$)</th><th class="r">P/L</th><th class="r hide-sm">Sells at or below</th><th class="r hide-sm nocase">Upper band (2σ)</th></tr></thead>
+          <tbody id="au-pos"></tbody>
+        </table>
+      </div>
+
+      <h3>Trades</h3>
+      <div class="table-scroll">
+        <table class="assets trades">
+          <thead><tr><th>Time</th><th>Side</th><th>Asset</th><th class="r">A$</th><th class="r hide-sm">Price</th><th class="r">P/L</th><th>Why</th></tr></thead>
+          <tbody id="au-log"></tbody>
+        </table>
+      </div>
+
+      <h3>How it decides</h3>
+      <ul>
+        <li><b>Buy</b> when an asset is trending up (12-bar average above 26-bar), momentum is rising (MACD) and RSI is 50–70: strong but not stretched. Strongest signals go first.</li>
+        <li><b>Take profit at a likely peak</b> when the price is stretched (RSI 70+ or above its 2σ band) and momentum starts fading. This only happens once the position is up by the % you set.</li>
+        <li><b>Trailing stop:</b> once the position is up by the trailing %, sell if the price falls that % below its highest point since buying.</li>
+        <li><b>Stop-loss:</b> before that, sell if the price falls the stop-loss % below the buy price.</li>
+        <li>After selling, it waits 60 minutes before buying the same asset again. It only trades assets whose last trade is under 15 minutes old, so it won't trade shares while their market is closed.</li>
+        <li>Signals use completed 5-minute bars. Crypto starts with about 29 hours of history. Shares build history while this page is open during market hours (35 bars is about 3 hours), and need a Finnhub key.</li>
+        <li>In a long rally it can take profit early and miss the rest. Rules like these often do worse than simply holding, especially after fees.</li>
+        <li>It only runs while this page is open. Close the tab or lock your phone and it stops.</li>
+      </ul>
+
+      <h2>Alerts</h2>
+      <p>Get an alert when an asset you hold (Portfolio tab) hits a sell rule, or a recommended asset gets a strong buy signal (80+). Alerts use the auto-trader's rules and settings above.</p>
+      <label class="check"><input type="checkbox" id="al-notify" /> Device notifications</label>
+      <p class="muted" id="al-note"></p>
+      <ul id="al-log" class="al-log"></ul>
+
+      <h2>Real money</h2>
+      <p class="pill wait">Not connected</p>
+      <p>The auto-trader never touches real money. Trading your real money automatically needs three things:</p>
+      <ol>
+        <li>A broker or exchange account with API trading switched on.</li>
+        <li>A small server that keeps the API keys secret and runs around the clock. A browser tab stops when you close it.</li>
+        <li>Hard limits you choose: maximum per trade, per day and in total.</li>
+      </ol>
+    </section>
+
+    <!-- Portfolio -->
+    <section id="view-portfolio" class="view" hidden>
+      <h2>Portfolio</h2>
+      <div class="stats">
+        <div class="stat"><span class="muted">Invested</span><b id="pf-cost">A$0.00</b></div>
+        <div class="stat"><span class="muted">Value now</span><b id="pf-value">A$0.00</b></div>
+        <div class="stat"><span class="muted">Gain / loss</span><b id="pf-pl">A$0.00</b></div>
+      </div>
+      <p class="muted">Holdings you've recorded after your broker filled the order. Values update live where a feed covers the asset.</p>
+      <div class="table-scroll">
+        <table class="assets">
+          <thead><tr><th>Asset</th><th class="r hide-sm">Units</th><th class="r">Cost (A$)</th><th class="r">Value (A$)</th><th class="r">P/L</th><th>Signal</th><th></th></tr></thead>
+          <tbody id="pf-rows"><tr><td colspan="7" class="muted">No holdings yet.</td></tr></tbody>
+        </table>
+      </div>
+      <p><button class="btn ghost" id="pf-export">Export CSV</button></p>
+    </section>
+
+    <!-- Settings -->
+    <section id="view-settings" class="view" hidden>
+      <h2>Live feeds</h2>
+      <p>Crypto and FX stream with no setup. Stocks, ETFs and REITs need a free <a href="https://finnhub.io/register" target="_blank" rel="noopener">Finnhub</a> API key. US listings stream live. ASX quotes depend on your Finnhub plan.</p>
+      <label class="field">Finnhub API key
+        <input type="password" id="finnhub-key" autocomplete="off" placeholder="paste key" />
+      </label>
+      <p class="muted">The key stays in this browser's storage and is sent only to finnhub.io.</p>
+      <p><button class="btn" id="save-key">Save &amp; connect</button> <button class="btn ghost" id="clear-key">Remove key</button></p>
+
+      <h2>Where your money goes</h2>
+      <label class="field">My broker's order page (opens after review)
+        <input type="url" id="broker-url" placeholder="https://your-broker.example/trade" />
+      </label>
+      <p><button class="btn ghost" id="save-broker">Save broker</button></p>
+
+      <h2>Apple Pay</h2>
+      <p class="pill wait">Not connected</p>
+      <p>Apple Pay moves card money. It doesn't buy assets. Paying into this page would only send money to a merchant account. You still wouldn't own anything. To fund real investments with Apple Pay from this app, it needs a regulated partner:</p>
+      <ol>
+        <li>A broker or crypto exchange with an embedded-investing API that holds the assets in your name. It must take fractional orders from A$2.</li>
+        <li>That partner's Apple Pay / card funding, with the merchant domain verified for this site.</li>
+        <li>In Australia, an AFS licence (or authorised-representative status) to offer this to anyone other than yourself.</li>
+      </ol>
+      <p class="muted">Until then: fund your broker with Apple Pay inside the broker's own app. Then use this page to choose assets and send the order list there.</p>
+    </section>
+  </main>
+
+  <!-- Order bar -->
+  <aside id="orderbar" class="orderbar" hidden>
+    <div class="wrap ob-row">
+      <div class="ob-sum"><b id="ob-count">0</b> selected · min <b id="ob-min">A$0</b></div>
+      <label class="ob-amt">A$ <input type="number" id="amount" min="2" step="1" inputmode="decimal" aria-label="Total amount in AUD" /></label>
+      <select id="weighting" aria-label="Allocation">
+        <option value="equal">Equal split</option>
+        <option value="popular">Weight by popularity</option>
+      </select>
+      <button class="btn" id="review">Review order</button>
+    </div>
+  </aside>
+
+  <!-- Review dialog -->
+  <dialog id="review-dlg">
+    <form method="dialog" class="dlg">
+      <h2>Review order</h2>
+      <p class="muted" id="rv-note"></p>
+      <div class="table-scroll dlg-table">
+        <table class="assets">
+          <thead><tr><th>Asset</th><th class="r">A$</th><th class="r">Price</th><th class="r">Est. units</th><th>Signal</th></tr></thead>
+          <tbody id="rv-rows"></tbody>
+        </table>
+      </div>
+      <p class="warn">Check the order before you send it. Prices move between now and the fill. Brokers may charge fees or have their own minimums. This is general information, not personal advice.</p>
+      <div class="dlg-actions">
+        <button class="btn ghost" value="cancel">Cancel</button>
+        <button class="btn ghost" type="button" id="rv-csv">Download order CSV</button>
+        <button class="btn ghost" type="button" id="rv-copy">Copy order</button>
+        <button class="btn" type="button" id="rv-broker">Open my broker</button>
+        <button class="btn" type="button" id="rv-record">Broker filled it — record</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="wrap foot">
+    <p>Prices: CoinGecko, Coinbase Exchange, Finnhub, open.er-api.com. Feeds can lag or drop. A dimmed price is stale. ABiZmuth does not hold money or assets and does not execute trades. <a href="../legal/disclaimer.html">Disclaimer</a></p>
+    <p>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</p>
+  </footer>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="./assets.js"></script>
+  <script src="./signals.js"></script>
+  <script src="./autotrader.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
