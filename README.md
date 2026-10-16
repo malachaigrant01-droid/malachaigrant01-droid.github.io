@@ -25,7 +25,7 @@ Static app with 236 assets in five categories: Property, AI, Stocks, Shares & ET
 | Feed | Covers | Setup |
 |---|---|---|
 | CoinGecko (30 s poll) + Coinbase Exchange WebSocket | Crypto price, 24h change, volume | None |
-| open.er-api.com | USD→AUD | None |
+| open.er-api.com | USD→AUD (daily reference rate) | None |
 | Finnhub REST + WebSocket | US stocks/ETFs/REITs live; ASX if the plan allows | Free key in Settings (kept in browser storage) |
 
 The page holds no money and places no trades. After review, it gives you an order CSV, a copyable order and a link to your own broker. Once the broker fills the order, the portfolio tracker records it and values it live. In-app Apple Pay funding needs a regulated broker partner with an embedded-investing API, merchant-domain verification and, for anyone but yourself, an AFS licence. The Settings tab explains this.

@@ -98,7 +98,7 @@
       const j = await r.json();
       if (j && j.rates && j.rates.AUD) {
         usdAud = j.rates.AUD;
-        pill("feed-fx", "on", "FX 1 USD = A$" + usdAud.toFixed(4));
+        pill("feed-fx", "on", "FX 1 USD = A$" + usdAud.toFixed(4) + " · daily");
         byKey.forEach((a) => scheduleRow(a.key, 0));
       } else throw new Error("no AUD");
     } catch (e) {
@@ -108,7 +108,7 @@
 
   // ---------- feeds: crypto (CoinGecko poll + Coinbase stream) ----------
   const cryptoAssets = [...byKey.values()].filter((a) => a.src === "crypto");
-  let cbLive = false;
+  let cbLive = false, cgLoaded = false;
 
   async function pollCoinGecko() {
     const ids = cryptoAssets.map((a) => a.cg).join(",");
@@ -121,12 +121,16 @@
         const x = byCg.get(a.cg);
         if (!x) return;
         const q = quotes.get(a.key);
+        // Volume always comes from here (global, all exchanges) so popularity ranks like with like.
+        // Price and 24h change come from the Coinbase stream while it is fresh.
         const streamFresh = q && q.ccy === "USD" && Date.now() - q.at < 60000;
-        const patch = { volAud: x.total_volume, chg: x.price_change_percentage_24h };
-        if (!streamFresh) Object.assign(patch, { px: x.current_price, ccy: "AUD" });
+        const patch = { volAud: x.total_volume };
+        if (!streamFresh) Object.assign(patch, { px: x.current_price, ccy: "AUD", chg: x.price_change_percentage_24h });
         setQuote(a.key, patch);
       });
       if (!cbLive) pill("feed-crypto", "on", "Crypto live · 30s");
+      // First volume data can change which assets count as popular; refresh an open list once.
+      if (!cgLoaded) { cgLoaded = true; if (current) renderRows(); }
     } catch (e) {
       if (!cbLive) pill("feed-crypto", "wait", "Crypto retrying");
     }
@@ -147,11 +151,11 @@
       if (m.type !== "ticker") return;
       const a = byProduct.get(m.product_id);
       if (!a) return;
-      const px = +m.price, open = +m.open_24h, vol = +m.volume_24h;
+      const px = +m.price, open = +m.open_24h;
+      if (!(px > 0)) return;
       if (!cbLive) { cbLive = true; pill("feed-crypto", "on", "Crypto streaming"); }
       const patch = { px, ccy: "USD" };
       if (open > 0) patch.chg = ((px - open) / open) * 100;
-      if (vol > 0 && usdAud) patch.volAud = vol * px * usdAud;
       setQuote(a.key, patch);
     };
     ws.onclose = () => {
@@ -394,7 +398,7 @@
   function selectMany(list, on) {
     list.forEach((a) => { if (on) selected.add(a.key); else selected.delete(a.key); });
     store.set("selected", [...selected]);
-    renderRows();
+    if (current) renderRows();
     updateOrderBar();
     fhWsSync();
   }
