@@ -17,6 +17,7 @@
       </div>
       <nav class="tabs" role="tablist">
         <button class="tab on" data-view="markets" role="tab" aria-selected="true">Markets</button>
+        <button class="tab" data-view="auto" role="tab" aria-selected="false">Auto</button>
         <button class="tab" data-view="portfolio" role="tab" aria-selected="false">Portfolio</button>
         <button class="tab" data-view="settings" role="tab" aria-selected="false">Settings</button>
       </nav>
@@ -49,13 +50,95 @@
           <button class="btn ghost" id="sel-all">Select all</button>
           <button class="btn ghost" id="sel-none">Clear</button>
         </div>
+        <p class="muted legend">Signal: <b class="sig-buy">BUY</b> uptrend with rising momentum (strength 50–100) · <b class="sig-sell">PEAK</b> stretched and fading, a sell signal if you own it · <b class="sig-sell">FALLING</b> downtrend · HOLD nothing lined up · … still collecting price history. Hover or long-press a signal for the reason.</p>
         <div class="table-scroll">
           <table class="assets">
-            <thead><tr><th></th><th>Asset</th><th class="r">Price (A$)</th><th class="r">24h</th><th class="r hide-sm">Volume 24h</th><th>Popularity</th></tr></thead>
+            <thead><tr><th></th><th>Asset</th><th class="r">Price (A$)</th><th class="r">24h</th><th class="r hide-sm">Volume 24h</th><th class="hide-sm">Popularity</th><th>Signal</th></tr></thead>
             <tbody id="rows"></tbody>
           </table>
         </div>
       </div>
+    </section>
+
+    <!-- Auto-trader -->
+    <section id="view-auto" class="view" hidden>
+      <h2>Auto-trader <span class="pill wait">Paper money</span></h2>
+      <p class="warn">This trades <b>virtual money</b> in this browser so you can see what the rules would do before risking anything. Nobody can predict a peak. The rules sell after signs of a top, or once the price drops a set % from its high. They will sometimes sell too early or buy just before a fall. If "Market move" beats the auto-trader's return, the rules aren't adding value.</p>
+      <div class="au-bar">
+        <button class="btn" id="au-toggle" type="button">Start auto-trader</button>
+        <span class="pill" id="au-status">Stopped</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="muted">Equity</span><b id="au-equity">—</b></div>
+        <div class="stat"><span class="muted">Return</span><b id="au-ret">—</b></div>
+        <div class="stat"><span class="muted">Market move since start</span><b id="au-bench">—</b></div>
+        <div class="stat"><span class="muted">Cash</span><b id="au-cash">—</b></div>
+        <div class="stat"><span class="muted">Open P/L</span><b id="au-open">—</b></div>
+        <div class="stat"><span class="muted">Realised P/L</span><b id="au-real">—</b></div>
+        <div class="stat"><span class="muted">Winning sells</span><b id="au-win">—</b></div>
+        <div class="stat"><span class="muted">Fees paid</span><b id="au-fees">—</b></div>
+      </div>
+      <p class="muted">"Market move" is the average change in the assets it could pick from since you first started it. That's roughly what holding them all would have done.</p>
+
+      <details class="au-cfg">
+        <summary>Rules and limits</summary>
+        <div class="grid">
+          <label class="field">Trade from <select id="au-scope"></select></label>
+          <label class="field">Starting cash (A$) <input type="number" id="au-start" min="10" step="10" inputmode="decimal" /><span class="muted" id="au-start-note"></span></label>
+          <label class="field">Per buy (A$, min 2) <input type="number" id="au-per" min="2" step="1" inputmode="decimal" /></label>
+          <label class="field">Max open positions <input type="number" id="au-max" min="1" max="236" step="1" inputmode="numeric" /></label>
+          <label class="field">Take profit at a likely peak once up (%) <input type="number" id="au-peak" min="0" max="100" step="0.5" inputmode="decimal" /></label>
+          <label class="field">Trailing stop (%) <input type="number" id="au-trail" min="0.5" max="50" step="0.5" inputmode="decimal" /></label>
+          <label class="field">Stop-loss (%) <input type="number" id="au-stop" min="0.5" max="90" step="0.5" inputmode="decimal" /></label>
+          <label class="field">Fee per trade (%) <input type="number" id="au-fee" min="0" max="10" step="0.1" inputmode="decimal" /></label>
+          <label class="field">Flat fee per trade (A$) <input type="number" id="au-flat" min="0" max="50" step="0.5" inputmode="decimal" /></label>
+        </div>
+        <p class="muted">Many share brokers charge a flat fee on every trade. Enter yours to see what it does to small automatic trades.</p>
+        <p><button class="btn ghost" id="au-reset" type="button">Reset paper account</button> <button class="btn ghost" id="au-export" type="button">Export trades CSV</button></p>
+      </details>
+
+      <h3>Open positions</h3>
+      <div class="table-scroll">
+        <table class="assets">
+          <thead><tr><th>Asset</th><th class="r">Cost (A$)</th><th class="r">Value (A$)</th><th class="r">P/L</th><th class="r hide-sm">Sells at or below</th><th class="r hide-sm nocase">Upper band (2σ)</th></tr></thead>
+          <tbody id="au-pos"></tbody>
+        </table>
+      </div>
+
+      <h3>Trades</h3>
+      <div class="table-scroll">
+        <table class="assets trades">
+          <thead><tr><th>Time</th><th>Side</th><th>Asset</th><th class="r">A$</th><th class="r hide-sm">Price</th><th class="r">P/L</th><th>Why</th></tr></thead>
+          <tbody id="au-log"></tbody>
+        </table>
+      </div>
+
+      <h3>How it decides</h3>
+      <ul>
+        <li><b>Buy</b> when an asset is trending up (12-bar average above 26-bar), momentum is rising (MACD) and RSI is 50–70: strong but not stretched. Strongest signals go first.</li>
+        <li><b>Take profit at a likely peak</b> when the price is stretched (RSI 70+ or above its 2σ band) and momentum starts fading. This only happens once the position is up by the % you set.</li>
+        <li><b>Trailing stop:</b> once the position is up by the trailing %, sell if the price falls that % below its highest point since buying.</li>
+        <li><b>Stop-loss:</b> before that, sell if the price falls the stop-loss % below the buy price.</li>
+        <li>After selling, it waits 60 minutes before buying the same asset again. It only trades assets whose last trade is under 15 minutes old, so it won't trade shares while their market is closed.</li>
+        <li>Signals use completed 5-minute bars. Crypto starts with about 29 hours of history. Shares build history while this page is open during market hours (35 bars is about 3 hours), and need a Finnhub key.</li>
+        <li>In a long rally it can take profit early and miss the rest. Rules like these often do worse than simply holding, especially after fees.</li>
+        <li>It only runs while this page is open. Close the tab or lock your phone and it stops.</li>
+      </ul>
+
+      <h2>Alerts</h2>
+      <p>Get an alert when an asset you hold (Portfolio tab) hits a sell rule, or a recommended asset gets a strong buy signal (80+). Alerts use the auto-trader's rules and settings above.</p>
+      <label class="check"><input type="checkbox" id="al-notify" /> Device notifications</label>
+      <p class="muted" id="al-note"></p>
+      <ul id="al-log" class="al-log"></ul>
+
+      <h2>Real money</h2>
+      <p class="pill wait">Not connected</p>
+      <p>The auto-trader never touches real money. Trading your real money automatically needs three things:</p>
+      <ol>
+        <li>A broker or exchange account with API trading switched on.</li>
+        <li>A small server that keeps the API keys secret and runs around the clock. A browser tab stops when you close it.</li>
+        <li>Hard limits you choose: maximum per trade, per day and in total.</li>
+      </ol>
     </section>
 
     <!-- Portfolio -->
@@ -69,8 +152,8 @@
       <p class="muted">Holdings you've recorded after your broker filled the order. Values update live where a feed covers the asset.</p>
       <div class="table-scroll">
         <table class="assets">
-          <thead><tr><th>Asset</th><th class="r">Units</th><th class="r">Cost (A$)</th><th class="r">Value (A$)</th><th class="r">P/L</th><th></th></tr></thead>
-          <tbody id="pf-rows"><tr><td colspan="6" class="muted">No holdings yet.</td></tr></tbody>
+          <thead><tr><th>Asset</th><th class="r hide-sm">Units</th><th class="r">Cost (A$)</th><th class="r">Value (A$)</th><th class="r">P/L</th><th>Signal</th><th></th></tr></thead>
+          <tbody id="pf-rows"><tr><td colspan="7" class="muted">No holdings yet.</td></tr></tbody>
         </table>
       </div>
       <p><button class="btn ghost" id="pf-export">Export CSV</button></p>
@@ -124,7 +207,7 @@
       <p class="muted" id="rv-note"></p>
       <div class="table-scroll dlg-table">
         <table class="assets">
-          <thead><tr><th>Asset</th><th class="r">A$</th><th class="r">Price</th><th class="r">Est. units</th></tr></thead>
+          <thead><tr><th>Asset</th><th class="r">A$</th><th class="r">Price</th><th class="r">Est. units</th><th>Signal</th></tr></thead>
           <tbody id="rv-rows"></tbody>
         </table>
       </div>
@@ -144,7 +227,11 @@
     <p>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</p>
   </footer>
 
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
   <script src="./assets.js"></script>
+  <script src="./signals.js"></script>
+  <script src="./autotrader.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

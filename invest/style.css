@@ -71,4 +71,21 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .foot{border-top:1px solid var(--line2);color:var(--dim);font-size:.8rem;margin-top:2rem;padding-top:.5rem;padding-bottom:1rem}
 .foot a{color:var(--mute)}
 .x{background:none;border:0;color:var(--dim);cursor:pointer;font:inherit}
+h3{font-family:Georgia,serif;font-weight:500;font-size:1.05rem;margin:1.4rem 0 .4rem}
+.assets th.nocase{text-transform:none}
+.sig{font-family:ui-monospace,monospace;font-size:.72rem;letter-spacing:.04em;white-space:nowrap}
+.sig-buy{color:var(--up)}.sig-sell{color:var(--down)}.sig-hold{color:var(--mute)}.sig-wait{color:var(--dim)}
+.legend{font-size:.78rem;margin:.25rem 0 .5rem}
+.au-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.75rem 0}
+.au-cfg summary{cursor:pointer;color:var(--soft);margin:.75rem 0;font-size:.9rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.75rem}
+.grid .field{max-width:none}
+.trades .why{color:var(--mute);font-size:.8rem;min-width:12rem}
+.al-log{list-style:none;padding:0;margin:.5rem 0;font-size:.85rem}
+.al-log li{border-bottom:1px solid var(--line2);padding:.4rem 0}
+.al-log .al-buy{border-left:2px solid var(--up);padding-left:.5rem}
+.al-log .al-sell{border-left:2px solid var(--down);padding-left:.5rem}
+.toasts{position:fixed;right:16px;bottom:84px;display:flex;flex-direction:column;gap:.5rem;z-index:20;max-width:min(22rem,calc(100vw - 32px))}
+.toast{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--soft);padding:.6rem .75rem;font-size:.85rem;box-shadow:0 4px 16px rgba(0,0,0,.45)}
+.toast.buy{border-left-color:var(--up)}.toast.sell{border-left-color:var(--down)}
 @media (max-width:600px){h1{font-size:1.45rem}.hide-sm{display:none}.assets th,.assets td{padding:.4rem .3rem}}

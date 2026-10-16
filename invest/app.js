@@ -6,11 +6,18 @@
   const FX_POLL_MS = 600000;
   const FH_GAP_MS = 1100; // Finnhub free tier: 60 req/min
   const FH_WS_MAX = 50;
+  const BAR_MS = 300000; // signals run on 5-minute closing prices
+  const BAR_CAP = 300;
+  const AUTO_MS = 15000;
+  const TRADABLE_MS = 15 * 60000; // last trade must be this recent, so closed markets aren't traded
+
+  const Sig = window.InvestSignals;
+  const AT = window.InvestAutoTrader;
 
   // ---------- storage ----------
   const store = {
     get(k, d) { try { const v = localStorage.getItem("abz-invest:" + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
-    set(k, v) { try { localStorage.setItem("abz-invest:" + k, JSON.stringify(v)); } catch (_) { /* private mode */ } },
+    set(k, v) { try { localStorage.setItem("abz-invest:" + k, JSON.stringify(v)); } catch (_) { /* private mode or full */ } },
     del(k) { try { localStorage.removeItem("abz-invest:" + k); } catch (_) { /* ignore */ } },
   };
 
@@ -27,13 +34,19 @@
   const catById = (id) => (id === "all" ? ALL : CATS.find((c) => c.id === id));
 
   // ---------- state ----------
-  const quotes = new Map(); // key -> {px, ccy, chg, volAud, at}
+  const quotes = new Map(); // key -> {px, ccy, chg, volAud, at (fetched), tt (last trade)}
+  const bars = new Map(); // key -> {b: [5-minute bucket], c: [close in A$]}
+  const sigCache = new Map();
   let usdAud = null;
   let current = null; // category object
   const selected = new Set(store.get("selected", []).filter((k) => byKey.has(k)));
   let holdings = store.get("holdings", []);
   let finnhubKey = store.get("finnhubKey", "");
   let brokerUrl = store.get("brokerUrl", "");
+  let trader = loadTrader();
+  let alerts = store.get("alerts", []);
+  const alertMemo = store.get("alertMemo", {});
+  let notifyOn = store.get("notify", false);
 
   // ---------- helpers ----------
   const $ = (id) => document.getElementById(id);
@@ -42,8 +55,14 @@
   const idToKey = new Map([...byKey.keys()].map((k) => [rowId(k), k]));
   const audFmt = (n, dp) => n == null || !isFinite(n) ? "—" : n.toLocaleString("en-AU", { minimumFractionDigits: dp, maximumFractionDigits: dp });
   const priceFmt = (n) => n == null ? "—" : n >= 1000 ? audFmt(n, 0) : n >= 1 ? audFmt(n, 2) : n >= 0.01 ? audFmt(n, 4) : n.toPrecision(3);
-  const money = (n) => (n < 0 ? "-A$" : "A$") + audFmt(Math.abs(n), 2);
+  const money = (n) => (n <= -0.005 ? "-A$" : "A$") + audFmt(Math.abs(n), 2);
   const compact = (n) => n == null ? "—" : n.toLocaleString("en-AU", { notation: "compact", maximumFractionDigits: 1 });
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const timeFmt = (t) => {
+    const d = new Date(t);
+    const hm = d.toLocaleTimeString("en-AU", { hour12: false, hour: "2-digit", minute: "2-digit" });
+    return d.toDateString() === new Date().toDateString() ? hm : d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }) + " " + hm;
+  };
 
   function audPrice(key) {
     const q = quotes.get(key);
@@ -57,6 +76,12 @@
     if (!q) return true;
     const a = byKey.get(key);
     return Date.now() - q.at > (a.src === "crypto" ? 120000 : 900000);
+  }
+
+  // A live price whose last trade is recent: crypto any time, shares only while their market is open.
+  function tradable(key) {
+    const q = quotes.get(key);
+    return !!q && audPrice(key) != null && Date.now() - (q.tt || 0) < TRADABLE_MS;
   }
 
   // Popularity: curated rank, lifted by live 24h volume rank inside the asset's category.
@@ -75,7 +100,97 @@
     const before = audPrice(key);
     quotes.set(key, Object.assign({}, prev, patch, { at: Date.now() }));
     const after = audPrice(key);
+    if (patch.px != null && after != null) addTick(key, after, patch.tt || Date.now());
     scheduleRow(key, before != null && after != null ? Math.sign(after - before) : 0);
+  }
+
+  // ---------- price history (5-minute bars) ----------
+  function addTick(key, aud, ts) {
+    const bucket = Math.floor(ts / BAR_MS);
+    let s = bars.get(key);
+    if (!s) bars.set(key, (s = { b: [], c: [] }));
+    const n = s.b.length;
+    if (n && s.b[n - 1] === bucket) s.c[n - 1] = aud;
+    else if (!n || bucket > s.b[n - 1]) {
+      s.b.push(bucket);
+      s.c.push(aud);
+      if (s.b.length > BAR_CAP) { s.b.splice(0, s.b.length - BAR_CAP); s.c.splice(0, s.c.length - BAR_CAP); }
+    }
+  }
+
+  // History from an API fills in older bars; bars already built from live prices win.
+  function mergeBars(key, points) {
+    const m = new Map();
+    points.forEach((p) => { if (p[1] > 0) m.set(Math.floor(p[0] / BAR_MS), p[1]); });
+    const s = bars.get(key);
+    if (s) s.b.forEach((b, i) => m.set(b, s.c[i]));
+    const b = [...m.keys()].sort((x, y) => x - y).slice(-BAR_CAP);
+    bars.set(key, { b, c: b.map((x) => m.get(x)) });
+  }
+
+  // Signal from completed bars only, so it can't flip back and forth inside a bar.
+  function signal(key) {
+    const s = bars.get(key);
+    let n = s ? s.b.length : 0;
+    if (n && s.b[n - 1] >= Math.floor(Date.now() / BAR_MS)) n--;
+    const stamp = n ? s.b[n - 1] + ":" + n + ":" + s.c[n - 1] : "0";
+    const hit = sigCache.get(key);
+    if (hit && hit.stamp === stamp) return hit.sig;
+    const sig = Sig.evaluate(n ? s.c.slice(0, n) : []);
+    sigCache.set(key, { stamp, sig });
+    return sig;
+  }
+
+  function sigLabel(s) {
+    if (s.action === "buy") return "BUY " + s.strength;
+    if (s.action === "sell") return s.kind === "peak" ? "PEAK" : "FALLING";
+    return s.action === "wait" ? "…" : "HOLD";
+  }
+  function paintSig(cell, key) {
+    const s = signal(key);
+    cell.textContent = sigLabel(s);
+    cell.className = "sig sig-" + s.action + (cell.classList.contains("hide-sm") ? " hide-sm" : "");
+    cell.title = s.reason + (s.ceiling ? " · 2σ ceiling A$" + priceFmt(s.ceiling) : "");
+  }
+
+  // Crypto starts with ~29 h of 5-minute history; shares keep what this browser has seen.
+  // Coinbase allows quick calls; CoinGecko's free tier rate-limits hard, so its few coins go slowly.
+  async function seedHistory() {
+    for (const a of cryptoAssets.filter((x) => x.cb)) {
+      if (!usdAud) break;
+      try {
+        const r = await fetch("https://api.exchange.coinbase.com/products/" + a.cb + "/candles?granularity=300", { cache: "no-store" });
+        if (r.ok) { const rows = await r.json(); if (Array.isArray(rows)) mergeBars(a.key, rows.map((k) => [k[0] * 1000, k[4] * usdAud])); }
+      } catch (_) { /* this asset warms up from live prices instead */ }
+      scheduleRow(a.key, 0);
+      await sleep(150);
+    }
+    let queue = cryptoAssets.filter((x) => !x.cb).map((a) => ({ a, tries: 0 }));
+    while (queue.length) {
+      const job = queue.shift();
+      let limited = false;
+      try {
+        const r = await fetch("https://api.coingecko.com/api/v3/coins/" + encodeURIComponent(job.a.cg) + "/market_chart?vs_currency=aud&days=1", { cache: "no-store" });
+        if (r.status === 429) limited = true;
+        else if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.prices)) mergeBars(job.a.key, j.prices); }
+      } catch (_) { /* warms up from live prices instead */ }
+      if (limited && ++job.tries < 2) queue.push(job);
+      scheduleRow(job.a.key, 0);
+      await sleep(limited ? 90000 : 20000);
+    }
+  }
+
+  function loadStockBars() {
+    const saved = store.get("bars", {});
+    Object.keys(saved).forEach((k) => {
+      const v = saved[k];
+      if (byKey.has(k) && Array.isArray(v) && Array.isArray(v[0]) && v[0].length === v[1].length) bars.set(k, { b: v[0].slice(-BAR_CAP), c: v[1].slice(-BAR_CAP) });
+    });
+  }
+  function saveStockBars() {
+    const out = {};
+    bars.forEach((s, k) => { if (!k.startsWith("crypto:") && s.b.length) out[k] = [s.b, s.c.map((x) => +x.toPrecision(7))]; });
+    store.set("bars", out);
   }
 
   // ---------- render batching ----------
@@ -120,12 +235,12 @@
       cryptoAssets.forEach((a) => {
         const x = byCg.get(a.cg);
         if (!x) return;
-        const q = quotes.get(a.key);
         // Volume always comes from here (global, all exchanges) so popularity ranks like with like.
         // Price and 24h change come from the Coinbase stream while it is fresh.
+        const q = quotes.get(a.key);
         const streamFresh = q && q.ccy === "USD" && Date.now() - q.at < 60000;
         const patch = { volAud: x.total_volume };
-        if (!streamFresh) Object.assign(patch, { px: x.current_price, ccy: "AUD", chg: x.price_change_percentage_24h });
+        if (!streamFresh) Object.assign(patch, { px: x.current_price, ccy: "AUD", chg: x.price_change_percentage_24h, tt: Date.parse(x.last_updated) || Date.now() });
         setQuote(a.key, patch);
       });
       if (!cbLive) pill("feed-crypto", "on", "Crypto live · 30s");
@@ -154,7 +269,7 @@
       const px = +m.price, open = +m.open_24h;
       if (!(px > 0)) return;
       if (!cbLive) { cbLive = true; pill("feed-crypto", "on", "Crypto streaming"); }
-      const patch = { px, ccy: "USD" };
+      const patch = { px, ccy: "USD", tt: Date.parse(m.time) || Date.now() };
       if (open > 0) patch.chg = ((px - open) / open) * 100;
       setQuote(a.key, patch);
     };
@@ -193,7 +308,8 @@
       else if (r.ok) {
         const j = await r.json();
         if (j && j.c > 0) {
-          setQuote(a.key, { px: j.c, ccy: a.src === "asx" ? "AUD" : "USD", chg: j.dp, pc: j.pc });
+          // Bars are keyed on the quote's own trade time, so a closed market adds no new bars.
+          setQuote(a.key, { px: j.c, ccy: a.src === "asx" ? "AUD" : "USD", chg: j.dp, pc: j.pc, tt: j.t ? j.t * 1000 : Date.now() });
           pill("feed-stocks", "on", fhWs && fhWs.readyState === 1 ? "Stocks streaming" : "Stocks live");
         } else if (a.src === "asx") fhAsxBlocked = true;
       }
@@ -225,13 +341,13 @@
       let m; try { m = JSON.parse(ev.data); } catch (_) { return; }
       if (m.type !== "trade" || !Array.isArray(m.data)) return;
       const last = new Map();
-      m.data.forEach((t) => last.set(t.s, t.p));
-      last.forEach((p, s) => {
+      m.data.forEach((t) => last.set(t.s, t));
+      last.forEach((t, s) => {
         const key = "us:" + s;
         if (!byKey.has(key)) return;
         const q = quotes.get(key);
-        const patch = { px: p, ccy: "USD" };
-        if (q && q.pc > 0) patch.chg = ((p - q.pc) / q.pc) * 100;
+        const patch = { px: t.p, ccy: "USD", tt: t.t || Date.now() };
+        if (q && q.pc > 0) patch.chg = ((t.p - q.pc) / q.pc) * 100;
         setQuote(key, patch);
       });
     };
@@ -288,7 +404,8 @@
       const pop = c.assets.filter(isPopular);
       const moves = pop.map((a) => quotes.get(a.key)).filter((q) => q && q.chg != null).map((q) => q.chg);
       const avg = moves.length ? moves.reduce((s, x) => s + x, 0) / moves.length : null;
-      b.querySelector(".count").textContent = c.assets.length + " assets · " + pop.length + " recommended";
+      const buys = pop.filter((a) => signal(a.key).action === "buy").length;
+      b.querySelector(".count").textContent = c.assets.length + " assets · " + pop.length + " recommended · " + buys + " buy signal" + (buys === 1 ? "" : "s");
       const move = b.querySelector(".move");
       move.className = "move " + (avg == null ? "muted" : avg >= 0 ? "up" : "down");
       move.textContent = avg == null ? "awaiting prices" : (avg >= 0 ? "+" : "") + avg.toFixed(2) + "% 24h (recommended avg)";
@@ -331,7 +448,7 @@
     tb.textContent = "";
     const list = visibleAssets();
     if (!list.length) {
-      const tr = el("tr"); const td = el("td", "muted", "No matches."); td.colSpan = 6; tr.append(td); tb.append(tr);
+      const tr = el("tr"); const td = el("td", "muted", "No matches."); td.colSpan = 7; tr.append(td); tb.append(tr);
       return;
     }
     list.forEach((a) => {
@@ -353,8 +470,9 @@
       const c2 = el("td", "r px");
       const c3 = el("td", "r chg");
       const c4 = el("td", "r vol hide-sm");
-      const c5 = el("td", "dots");
-      tr.append(c0, c1, c2, c3, c4, c5);
+      const c5 = el("td", "dots hide-sm");
+      const c6 = el("td", "sig");
+      tr.append(c0, c1, c2, c3, c4, c5, c6);
       if (selected.has(a.key)) tr.classList.add("sel");
       tb.append(tr);
       paintRow(a.key, 0);
@@ -383,6 +501,7 @@
     tr.querySelector(".vol").textContent = q && q.volAud != null ? "A$" + compact(q.volAud) : "—";
     const s = score(a);
     tr.querySelector(".dots").textContent = "●".repeat(s) + "○".repeat(5 - s);
+    paintSig(tr.querySelector(".sig"), key);
   }
 
   // ---------- selection & order ----------
@@ -405,7 +524,7 @@
 
   function updateOrderBar() {
     const n = selected.size;
-    $("orderbar").hidden = n === 0;
+    $("orderbar").hidden = n === 0 || view !== "markets";
     $("ob-count").textContent = n;
     const min = n * MIN_PER_ASSET;
     $("ob-min").textContent = "A$" + min;
@@ -450,7 +569,8 @@
     lastOrder.forEach((o) => {
       const tr = el("tr");
       const c1 = el("td"); c1.append(el("span", "tk", o.a.sym), el("span", "nm", o.a.name));
-      tr.append(c1, el("td", "r", audFmt(o.amt, 2)), el("td", "r", priceFmt(o.px)), el("td", "r", o.units == null ? "—" : o.units.toPrecision(4)));
+      const sc = el("td", "sig"); paintSig(sc, o.a.key);
+      tr.append(c1, el("td", "r", audFmt(o.amt, 2)), el("td", "r", priceFmt(o.px)), el("td", "r", o.units == null ? "—" : o.units.toPrecision(4)), sc);
       tb.append(tr);
     });
     const missing = lastOrder.filter((o) => o.px == null).length;
@@ -481,7 +601,7 @@
     lastOrder.forEach((o) => {
       const h = holdings.find((x) => x.key === o.a.key);
       if (h) { h.cost += o.amt; h.units = h.units == null || o.units == null ? null : h.units + o.units; }
-      else holdings.push({ key: o.a.key, cost: o.amt, units: o.units, at: now });
+      else holdings.push({ key: o.a.key, cost: o.amt, units: o.units, at: now, high: o.px });
     });
     store.set("holdings", holdings);
     $("review-dlg").close();
@@ -505,18 +625,276 @@
       const tr = el("tr");
       const c1 = el("td"); c1.append(el("span", "tk", a.sym), el("span", "nm", a.name));
       const plCell = el("td", "r " + (pl == null ? "" : pl >= 0 ? "up" : "down"), pl == null ? "—" : money(pl) + " (" + ((pl / h.cost) * 100).toFixed(1) + "%)");
+      const sc = el("td", "sig"); paintSig(sc, h.key);
       const rm = el("button", "x", "✕"); rm.type = "button"; rm.title = "Remove holding";
       rm.addEventListener("click", () => { if (confirm("Remove " + a.sym + " from this tracker?")) { holdings.splice(i, 1); store.set("holdings", holdings); renderPortfolio(); } });
-      const c6 = el("td"); c6.append(rm);
-      tr.append(c1, el("td", "r", h.units == null ? "—" : h.units.toPrecision(5)), el("td", "r", audFmt(h.cost, 2)), el("td", "r", v == null ? "—" : audFmt(v, 2)), plCell, c6);
+      const c7 = el("td"); c7.append(rm);
+      tr.append(c1, el("td", "r hide-sm", h.units == null ? "—" : h.units.toPrecision(5)), el("td", "r", audFmt(h.cost, 2)), el("td", "r", v == null ? "—" : audFmt(v, 2)), plCell, sc, c7);
       tb.append(tr);
     });
-    if (!holdings.length) { const tr = el("tr"); const td = el("td", "muted", "No holdings yet."); td.colSpan = 6; tr.append(td); tb.append(tr); }
+    if (!holdings.length) { const tr = el("tr"); const td = el("td", "muted", "No holdings yet."); td.colSpan = 7; tr.append(td); tb.append(tr); }
     $("pf-cost").textContent = money(cost);
     $("pf-value").textContent = valued ? money(value + (cost - valued)) : money(cost);
     const pl = value - valued;
     $("pf-pl").textContent = valued ? money(pl) : "—";
-    $("pf-pl").className = valued ? (pl >= 0 ? "up" : "down") : "";
+    $("pf-pl").className = !valued || Math.abs(pl) < 0.005 ? "" : pl > 0 ? "up" : "down";
+  }
+
+  // ---------- auto-trader (paper) ----------
+  function loadTrader() {
+    const t = store.get("auto", null);
+    if (!t || !t.cfg || !t.positions) return AT.create({});
+    t.cfg = Object.assign({}, AT.DEFAULTS, t.cfg);
+    return t;
+  }
+  const saveTrader = () => store.set("auto", trader);
+
+  function autoCandidates() {
+    const sc = trader.cfg.scope;
+    if (sc === "all") return [...byKey.keys()];
+    const pool = sc.indexOf("cat:") === 0 ? (catById(sc.slice(4)) || ALL).assets : ALL.assets;
+    return pool.filter(isPopular).map((a) => a.key);
+  }
+
+  // Only one open tab runs the trader; the others mirror its saved state.
+  const TAB_ID = Math.random().toString(36).slice(2);
+  function holdLock() {
+    const l = store.get("autoLock", null);
+    const now = Date.now();
+    if (l && l.id !== TAB_ID && now - l.at < 45000) return false;
+    store.set("autoLock", { id: TAB_ID, at: now });
+    return true;
+  }
+
+  let lastStep = 0, autoNote = "";
+  function autoTick() {
+    trackHoldingHighs();
+    checkAlerts();
+    if (!trader.on) { autoNote = ""; paintAutoStatus(); return; }
+    if (!holdLock()) { autoNote = "Paused: running in another tab"; paintAutoStatus(); return; }
+    const done = AT.step(trader, { now: Date.now(), candidates: autoCandidates(), price: audPrice, tradable, signal });
+    saveTrader();
+    lastStep = Date.now();
+    autoNote = "";
+    if (done.length) {
+      const b = done.filter((t) => t.side === "BUY").length, s = done.length - b;
+      toast("Auto-trader (paper): " + [b ? "bought " + b : "", s ? "sold " + s : ""].filter(Boolean).join(", "), s ? "sell" : "buy");
+    }
+    paintAutoStatus();
+    if (view === "auto") renderAuto(done.length > 0);
+  }
+
+  function paintAutoStatus() {
+    const btn = $("au-toggle");
+    btn.textContent = trader.on ? "Pause auto-trader" : "Start auto-trader";
+    btn.className = trader.on ? "btn ghost" : "btn";
+    if (!trader.on) pill("au-status", "", "Stopped");
+    else if (autoNote) pill("au-status", "wait", autoNote);
+    else pill("au-status", "on", "Running · watching " + autoCandidates().length + " assets" + (lastStep ? " · checked " + new Date(lastStep).toLocaleTimeString("en-AU", { hour12: false }) : ""));
+  }
+
+  function startStop() {
+    trader.on = !trader.on;
+    if (trader.on) {
+      trader.startedAt = trader.startedAt || Date.now();
+      if (!Object.keys(trader.bench).length) autoCandidates().forEach((k) => { const px = audPrice(k); if (px != null) trader.bench[k] = px; });
+    }
+    saveTrader();
+    autoTick();
+    renderAuto(true);
+  }
+
+  const CFG_FIELDS = [
+    ["au-per", "perTrade", 2, 100000], ["au-max", "maxPositions", 1, 236], ["au-peak", "peakMinPct", 0, 100],
+    ["au-trail", "trailPct", 0.5, 50], ["au-stop", "stopPct", 0.5, 90], ["au-fee", "feePct", 0, 10], ["au-flat", "flatFee", 0, 50],
+  ];
+
+  function fillAutoForm(keepStart) {
+    if (!keepStart) $("au-start").value = trader.cfg.startCash;
+    CFG_FIELDS.forEach(([id, k]) => { $(id).value = trader.cfg[k]; });
+    const sel = $("au-scope");
+    if (!sel.options.length) {
+      sel.append(new Option("Recommended, all categories", "recommended"));
+      CATS.forEach((c) => sel.append(new Option("Recommended in " + c.name, "cat:" + c.id)));
+      sel.append(new Option("Every asset (" + byKey.size + ")", "all"));
+    }
+    sel.value = trader.cfg.scope;
+  }
+
+  function readField(id, lo, hi, fallback) {
+    const v = parseFloat($(id).value);
+    if (!isFinite(v)) return fallback;
+    return Math.min(hi, Math.max(lo, v));
+  }
+
+  function applyAutoForm() {
+    CFG_FIELDS.forEach(([id, k, lo, hi]) => { trader.cfg[k] = readField(id, lo, hi, trader.cfg[k]); });
+    trader.cfg.maxPositions = Math.round(trader.cfg.maxPositions);
+    trader.cfg.scope = $("au-scope").value;
+    const start = readField("au-start", 10, 1e9, trader.cfg.startCash);
+    const fresh = !trader.trades.length && !Object.keys(trader.positions).length;
+    if (fresh) { trader.cfg.startCash = start; trader.cash = start; trader.bench = {}; }
+    const pending = !fresh && start !== trader.cfg.startCash;
+    $("au-start-note").textContent = pending ? "New starting cash applies after a reset." : "";
+    saveTrader();
+    fillAutoForm(pending); // keep a typed-in starting cash until the reset uses it
+    renderAuto(true);
+  }
+
+  function resetAuto() {
+    if (!confirm("Reset the paper account? Positions and trade history are cleared.")) return;
+    const cfg = Object.assign({}, trader.cfg, { startCash: readField("au-start", 10, 1e9, trader.cfg.startCash) });
+    trader = AT.create(cfg);
+    saveTrader();
+    $("au-start-note").textContent = "";
+    fillAutoForm();
+    autoTick();
+    renderAuto(true);
+  }
+
+  let shownTrades = -1;
+  function renderAuto(full) {
+    const sum = AT.summary(trader, audPrice);
+    const bench = AT.benchMove(trader, audPrice);
+    const pct = (x) => (x >= 0 ? "+" : "") + (x * 100).toFixed(2) + "%";
+    $("au-equity").textContent = money(sum.equity);
+    $("au-cash").textContent = money(sum.cash);
+    const setPl = (id, v) => { $(id).textContent = money(v); $(id).className = v > 0 ? "up" : v < 0 ? "down" : ""; };
+    setPl("au-open", sum.openPl);
+    setPl("au-real", sum.realised);
+    const ret = sum.equity / trader.cfg.startCash - 1;
+    $("au-ret").textContent = pct(ret);
+    $("au-ret").className = Math.abs(ret) < 0.00005 ? "" : ret > 0 ? "up" : "down";
+    $("au-win").textContent = sum.winRate == null ? "—" : Math.round(sum.winRate * 100) + "% of " + sum.sells;
+    $("au-bench").textContent = bench == null ? "—" : pct(bench);
+    $("au-bench").className = bench == null || Math.abs(bench) < 0.00005 ? "" : bench > 0 ? "up" : "down";
+    $("au-fees").textContent = money(sum.fees);
+
+    const tb = $("au-pos");
+    tb.textContent = "";
+    const keys = Object.keys(trader.positions);
+    keys.forEach((k) => {
+      const a = byKey.get(k);
+      const p = trader.positions[k];
+      const px = audPrice(k);
+      const v = px == null ? null : p.units * px;
+      const pl = v == null ? null : v - p.cost;
+      const stop = AT.stopFor(trader, p);
+      const s = signal(k);
+      const tr = el("tr");
+      const c1 = el("td"); c1.append(el("span", "tk", a ? a.sym : k), el("span", "nm", (a ? a.name : "") + " · since " + timeFmt(p.at)));
+      tr.append(c1,
+        el("td", "r", audFmt(p.cost, 2)),
+        el("td", "r", v == null ? "—" : audFmt(v, 2)),
+        el("td", "r " + (pl == null ? "" : pl >= 0 ? "up" : "down"), pl == null ? "—" : money(pl)),
+        el("td", "r hide-sm", priceFmt(stop.px) + (stop.kind === "trail" ? " trail" : " stop")),
+        el("td", "r hide-sm", s.ceiling ? priceFmt(s.ceiling) : "—"));
+      tb.append(tr);
+    });
+    if (!keys.length) { const tr = el("tr"); const td = el("td", "muted", trader.on ? "No open positions. Waiting for buy signals." : "No open positions."); td.colSpan = 6; tr.append(td); tb.append(tr); }
+
+    if (full || shownTrades !== trader.trades.length || (trader.trades[0] && trader.trades[0].t !== renderAuto.lastT)) {
+      shownTrades = trader.trades.length;
+      renderAuto.lastT = trader.trades[0] && trader.trades[0].t;
+      const lb = $("au-log");
+      lb.textContent = "";
+      trader.trades.slice(0, 100).forEach((t) => {
+        const a = byKey.get(t.key);
+        const tr = el("tr");
+        tr.append(el("td", "mono", timeFmt(t.t)), el("td", t.side === "BUY" ? "up" : "down", t.side), el("td", "tk", a ? a.sym : t.key),
+          el("td", "r", audFmt(t.amt, 2)), el("td", "r hide-sm", priceFmt(t.px)),
+          el("td", "r " + (t.pl == null ? "" : t.pl >= 0 ? "up" : "down"), t.pl == null ? "" : money(t.pl)), el("td", "why", t.reason));
+        lb.append(tr);
+      });
+      if (!trader.trades.length) { const tr = el("tr"); const td = el("td", "muted", "No trades yet."); td.colSpan = 7; tr.append(td); lb.append(tr); }
+    }
+    paintAutoStatus();
+    renderAlerts();
+  }
+
+  // ---------- alerts ----------
+  let holdingsDirty = false;
+  function trackHoldingHighs() {
+    holdings.forEach((h) => {
+      const px = audPrice(h.key);
+      if (px == null || h.units == null) return;
+      const entry = h.cost / h.units;
+      const high = Math.max(h.high || entry, px);
+      if (high !== h.high) { h.high = high; holdingsDirty = true; }
+    });
+  }
+
+  function pushAlert(id, text, kind, holdMs) {
+    const now = Date.now();
+    if (alertMemo[id] > now) return false;
+    alertMemo[id] = now + holdMs;
+    Object.keys(alertMemo).forEach((k) => { if (alertMemo[k] <= now) delete alertMemo[k]; });
+    store.set("alertMemo", alertMemo);
+    alerts.unshift({ t: now, text, kind });
+    if (alerts.length > 100) alerts.length = 100;
+    store.set("alerts", alerts);
+    toast(text, kind);
+    if (notifyOn && "Notification" in window && Notification.permission === "granted") {
+      try { new Notification("ABiZmuth Invest", { body: text, tag: id }); } catch (_) { /* some phone browsers only allow service-worker notifications */ }
+    }
+    if (view === "auto") renderAlerts();
+    return true;
+  }
+
+  // Same rules and settings as the auto-trader, applied to holdings you recorded for real.
+  function checkAlerts() {
+    const SIX_H = 6 * 3600000;
+    holdings.forEach((h) => {
+      const a = byKey.get(h.key);
+      const px = audPrice(h.key);
+      if (!a || px == null || h.units == null || !tradable(h.key)) return;
+      const entry = h.cost / h.units;
+      const stop = AT.stopFor(trader, { entry, high: Math.max(h.high || entry, px) });
+      if (px <= stop.px) {
+        pushAlert("stop:" + h.key, a.sym + ": " + (stop.kind === "trail" ? "trailing stop hit" : "stop-loss hit") + " at A$" + priceFmt(px) + ". Consider selling at your broker.", "sell", SIX_H);
+        return;
+      }
+      const s = signal(h.key);
+      const gain = px / entry - 1;
+      if (s.action === "sell" && s.kind === "peak" && gain >= trader.cfg.peakMinPct / 100) {
+        pushAlert("peak:" + h.key, a.sym + ": likely peak, up " + (gain * 100).toFixed(1) + "%. Consider taking profit at your broker.", "sell", SIX_H);
+      }
+    });
+    // Strong buy signals on recommended assets: at most 3 an hour, once per asset per 6 hours.
+    let recent = alerts.filter((x) => x.kind === "buy" && x.t > Date.now() - 3600000).length;
+    ALL.assets.filter(isPopular).forEach((a) => {
+      if (recent >= 3) return;
+      const s = signal(a.key);
+      if (s.action === "buy" && s.strength >= 80 && tradable(a.key) && pushAlert("buy:" + a.key, a.sym + ": strong buy signal (" + s.strength + "). " + s.reason + ".", "buy", SIX_H)) recent++;
+    });
+    if (holdingsDirty) { holdingsDirty = false; store.set("holdings", holdings); }
+  }
+
+  function renderAlerts() {
+    const ul = $("al-log");
+    ul.textContent = "";
+    alerts.slice(0, 30).forEach((x) => {
+      const li = el("li", "al-" + x.kind);
+      li.append(el("span", "mono muted", timeFmt(x.t) + " "), document.createTextNode(x.text));
+      ul.append(li);
+    });
+    if (!alerts.length) ul.append(el("li", "muted", "No alerts yet."));
+  }
+
+  function toast(text, kind) {
+    const t = el("div", "toast " + (kind || ""), text);
+    $("toasts").append(t);
+    setTimeout(() => t.remove(), 7000);
+  }
+
+  function paintNotifyNote() {
+    const box = $("al-notify");
+    box.checked = notifyOn;
+    let note = "Alerts show on this page while it's open.";
+    if (!("Notification" in window)) { note += " This browser doesn't support notifications."; box.disabled = true; }
+    else if (Notification.permission === "denied") note += " Notifications are blocked for this site in your browser settings.";
+    else if (notifyOn) note += " Device notifications are on.";
+    $("al-note").textContent = note;
   }
 
   // ---------- views ----------
@@ -524,9 +902,10 @@
   function show(v) {
     view = v;
     document.querySelectorAll(".tab").forEach((t) => { const on = t.dataset.view === v; t.classList.toggle("on", on); t.setAttribute("aria-selected", on); });
-    ["markets", "portfolio", "settings"].forEach((x) => { $("view-" + x).hidden = x !== v; });
+    ["markets", "auto", "portfolio", "settings"].forEach((x) => { $("view-" + x).hidden = x !== v; });
     $("orderbar").hidden = v !== "markets" || selected.size === 0;
     if (v === "portfolio") renderPortfolio();
+    if (v === "auto") renderAuto(true);
   }
 
   // ---------- wiring ----------
@@ -552,6 +931,29 @@
     download("portfolio.csv", rows);
   });
 
+  $("au-toggle").addEventListener("click", startStop);
+  $("au-reset").addEventListener("click", resetAuto);
+  ["au-start", "au-scope"].concat(CFG_FIELDS.map((f) => f[0])).forEach((id) => $(id).addEventListener("change", applyAutoForm));
+  $("au-export").addEventListener("click", () => {
+    const rows = [["Time", "Side", "Ticker", "AmountAUD", "PriceAUD", "Units", "FeeAUD", "PLAUD", "Reason"]];
+    trader.trades.slice().reverse().forEach((t) => { const a = byKey.get(t.key); rows.push([new Date(t.t).toISOString(), t.side, a ? a.sym : t.key, t.amt.toFixed(2), t.px, t.units, t.fee.toFixed(4), t.pl == null ? "" : t.pl.toFixed(2), t.reason]); });
+    download("paper-trades.csv", rows);
+  });
+  $("al-notify").addEventListener("change", async () => {
+    notifyOn = $("al-notify").checked;
+    if (notifyOn && "Notification" in window && Notification.permission === "default") {
+      try { await Notification.requestPermission(); } catch (_) { /* ignore */ }
+    }
+    if (!("Notification" in window) || Notification.permission !== "granted") notifyOn = false;
+    store.set("notify", notifyOn);
+    paintNotifyNote();
+  });
+  // Another tab ran the trader: show its latest state here.
+  window.addEventListener("storage", (e) => {
+    if (e.key !== "abz-invest:auto" || !e.newValue) return;
+    try { const t = JSON.parse(e.newValue); if (t && t.cfg && t.positions) { trader = t; if (view === "auto") renderAuto(true); } } catch (_) { /* ignore */ }
+  });
+
   $("finnhub-key").value = finnhubKey;
   $("save-key").addEventListener("click", () => { finnhubKey = $("finnhub-key").value.trim(); store.set("finnhubKey", finnhubKey); startFinnhub(); show("markets"); });
   $("clear-key").addEventListener("click", () => { finnhubKey = ""; $("finnhub-key").value = ""; store.del("finnhubKey"); startFinnhub(); });
@@ -563,7 +965,7 @@
     setTimeout(() => { $("save-broker").textContent = "Save broker"; }, 1500);
   });
 
-  // Clock, stale markers, category + portfolio refresh.
+  // Clock, stale markers, category + portfolio + auto refresh.
   setInterval(() => {
     $("clock").textContent = new Date().toLocaleTimeString("en-AU", { hour12: false });
     if (view === "markets" && !current) refreshCats();
@@ -572,14 +974,21 @@
       if (key) c.classList.toggle("stale", audPrice(key) != null && isStale(key));
     });
     if (view === "portfolio") renderPortfolio();
+    if (view === "auto") renderAuto(false);
   }, 2000);
 
   // ---------- boot ----------
+  loadStockBars();
   renderCats();
   updateOrderBar();
   $("orderbar").hidden = selected.size === 0;
-  pollFx().then(() => { pollCoinGecko(); connectCoinbase(); });
+  fillAutoForm();
+  paintNotifyNote();
+  paintAutoStatus();
+  pollFx().then(() => { pollCoinGecko(); connectCoinbase(); seedHistory(); });
   setInterval(pollFx, FX_POLL_MS);
   setInterval(pollCoinGecko, CG_POLL_MS);
+  setInterval(saveStockBars, 60000);
+  setInterval(autoTick, AUTO_MS);
   startFinnhub();
 })();
