@@ -17,3 +17,15 @@ Project name: `abizmuth-hub`. Output directory: `.` (this repo root). Build comm
 Wrangler Action (`.github/workflows/cloudflare-pages.yml`) is `workflow_dispatch` only. It needs GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Prefer Connect to Git so those secrets stay out of GitHub.
 
 Agent skill: [`skills/cloudflare-login-connections/`](./skills/cloudflare-login-connections/).
+
+## Invest (`/invest/`)
+
+Static app with 236 assets in five categories: Property, AI, Stocks, Shares & ETFs, and Crypto. Prices are in AUD and update live. You can build orders with at least A$2 per asset. "Recommended" means popular: curated popularity, raised by live 24h volume. It is not personal advice.
+
+| Feed | Covers | Setup |
+|---|---|---|
+| CoinGecko (30 s poll) + Coinbase Exchange WebSocket | Crypto price, 24h change, volume | None |
+| open.er-api.com | USD→AUD | None |
+| Finnhub REST + WebSocket | US stocks/ETFs/REITs live; ASX if the plan allows | Free key in Settings (kept in browser storage) |
+
+The page holds no money and places no trades. After review, it gives you an order CSV, a copyable order and a link to your own broker. Once the broker fills the order, the portfolio tracker records it and values it live. In-app Apple Pay funding needs a regulated broker partner with an embedded-investing API, merchant-domain verification and, for anyone but yourself, an AFS licence. The Settings tab explains this.

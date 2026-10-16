@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ABiZmuth Invest</title>
+  <meta name="description" content="Live prices across Property, AI, Stocks, Shares & ETFs and Crypto. Build fractional orders from A$2 per asset." />
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <div>
+        <p class="kicker">ABiZmuth · Invest</p>
+        <h1>Invest from A$2</h1>
+      </div>
+      <nav class="tabs" role="tablist">
+        <button class="tab on" data-view="markets" role="tab" aria-selected="true">Markets</button>
+        <button class="tab" data-view="portfolio" role="tab" aria-selected="false">Portfolio</button>
+        <button class="tab" data-view="settings" role="tab" aria-selected="false">Settings</button>
+      </nav>
+    </div>
+    <div class="wrap feeds" aria-live="polite">
+      <span class="pill" id="feed-fx">FX —</span>
+      <span class="pill" id="feed-crypto">Crypto —</span>
+      <span class="pill" id="feed-stocks">Stocks —</span>
+      <span class="pill mono" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Markets -->
+    <section id="view-markets" class="view">
+      <p class="warn">General information only, not personal advice. "Recommended" means <b>popular</b>: most widely held or highest live 24h trading volume. Popular is not the same as safe. Prices can fall to zero.</p>
+
+      <div id="categories" class="cats"></div>
+
+      <div id="category" class="category" hidden>
+        <div class="cat-head">
+          <button class="link" id="back">← All categories</button>
+          <h2 id="cat-title"></h2>
+          <p class="muted" id="cat-blurb"></p>
+        </div>
+        <div class="toolbar">
+          <input type="search" id="search" placeholder="Search name or ticker" aria-label="Search assets" />
+          <label class="check"><input type="checkbox" id="popular-only" checked /> Recommended only</label>
+          <button class="btn ghost" id="sel-popular">Select recommended</button>
+          <button class="btn ghost" id="sel-all">Select all</button>
+          <button class="btn ghost" id="sel-none">Clear</button>
+        </div>
+        <div class="table-scroll">
+          <table class="assets">
+            <thead><tr><th></th><th>Asset</th><th class="r">Price (A$)</th><th class="r">24h</th><th class="r hide-sm">Volume 24h</th><th>Popularity</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Portfolio -->
+    <section id="view-portfolio" class="view" hidden>
+      <h2>Portfolio</h2>
+      <div class="stats">
+        <div class="stat"><span class="muted">Invested</span><b id="pf-cost">A$0.00</b></div>
+        <div class="stat"><span class="muted">Value now</span><b id="pf-value">A$0.00</b></div>
+        <div class="stat"><span class="muted">Gain / loss</span><b id="pf-pl">A$0.00</b></div>
+      </div>
+      <p class="muted">Holdings you've recorded after your broker filled the order. Values update live where a feed covers the asset.</p>
+      <div class="table-scroll">
+        <table class="assets">
+          <thead><tr><th>Asset</th><th class="r">Units</th><th class="r">Cost (A$)</th><th class="r">Value (A$)</th><th class="r">P/L</th><th></th></tr></thead>
+          <tbody id="pf-rows"><tr><td colspan="6" class="muted">No holdings yet.</td></tr></tbody>
+        </table>
+      </div>
+      <p><button class="btn ghost" id="pf-export">Export CSV</button></p>
+    </section>
+
+    <!-- Settings -->
+    <section id="view-settings" class="view" hidden>
+      <h2>Live feeds</h2>
+      <p>Crypto and FX stream with no setup. Stocks, ETFs and REITs need a free <a href="https://finnhub.io/register" target="_blank" rel="noopener">Finnhub</a> API key. US listings stream live. ASX quotes depend on your Finnhub plan.</p>
+      <label class="field">Finnhub API key
+        <input type="password" id="finnhub-key" autocomplete="off" placeholder="paste key" />
+      </label>
+      <p class="muted">The key stays in this browser's storage and is sent only to finnhub.io.</p>
+      <p><button class="btn" id="save-key">Save &amp; connect</button> <button class="btn ghost" id="clear-key">Remove key</button></p>
+
+      <h2>Where your money goes</h2>
+      <label class="field">My broker's order page (opens after review)
+        <input type="url" id="broker-url" placeholder="https://your-broker.example/trade" />
+      </label>
+      <p><button class="btn ghost" id="save-broker">Save broker</button></p>
+
+      <h2>Apple Pay</h2>
+      <p class="pill wait">Not connected</p>
+      <p>Apple Pay moves card money. It doesn't buy assets. Paying into this page would only send money to a merchant account. You still wouldn't own anything. To fund real investments with Apple Pay from this app, it needs a regulated partner:</p>
+      <ol>
+        <li>A broker or crypto exchange with an embedded-investing API that holds the assets in your name. It must take fractional orders from A$2.</li>
+        <li>That partner's Apple Pay / card funding, with the merchant domain verified for this site.</li>
+        <li>In Australia, an AFS licence (or authorised-representative status) to offer this to anyone other than yourself.</li>
+      </ol>
+      <p class="muted">Until then: fund your broker with Apple Pay inside the broker's own app. Then use this page to choose assets and send the order list there.</p>
+    </section>
+  </main>
+
+  <!-- Order bar -->
+  <aside id="orderbar" class="orderbar" hidden>
+    <div class="wrap ob-row">
+      <div class="ob-sum"><b id="ob-count">0</b> selected · min <b id="ob-min">A$0</b></div>
+      <label class="ob-amt">A$ <input type="number" id="amount" min="2" step="1" inputmode="decimal" aria-label="Total amount in AUD" /></label>
+      <select id="weighting" aria-label="Allocation">
+        <option value="equal">Equal split</option>
+        <option value="popular">Weight by popularity</option>
+      </select>
+      <button class="btn" id="review">Review order</button>
+    </div>
+  </aside>
+
+  <!-- Review dialog -->
+  <dialog id="review-dlg">
+    <form method="dialog" class="dlg">
+      <h2>Review order</h2>
+      <p class="muted" id="rv-note"></p>
+      <div class="table-scroll dlg-table">
+        <table class="assets">
+          <thead><tr><th>Asset</th><th class="r">A$</th><th class="r">Price</th><th class="r">Est. units</th></tr></thead>
+          <tbody id="rv-rows"></tbody>
+        </table>
+      </div>
+      <p class="warn">Check the order before you send it. Prices move between now and the fill. Brokers may charge fees or have their own minimums. This is general information, not personal advice.</p>
+      <div class="dlg-actions">
+        <button class="btn ghost" value="cancel">Cancel</button>
+        <button class="btn ghost" type="button" id="rv-csv">Download order CSV</button>
+        <button class="btn ghost" type="button" id="rv-copy">Copy order</button>
+        <button class="btn" type="button" id="rv-broker">Open my broker</button>
+        <button class="btn" type="button" id="rv-record">Broker filled it — record</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="wrap foot">
+    <p>Prices: CoinGecko, Coinbase Exchange, Finnhub, open.er-api.com. Feeds can lag or drop. A dimmed price is stale. ABiZmuth does not hold money or assets and does not execute trades. <a href="../legal/disclaimer.html">Disclaimer</a></p>
+    <p>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</p>
+  </footer>
+
+  <script src="./assets.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
