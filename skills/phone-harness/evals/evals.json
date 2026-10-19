@@ -1,0 +1,41 @@
+{
+  "skill": "phone-harness",
+  "test_cases": [
+    {
+      "name": "check_hub_on_phone",
+      "input": "Check the hub site works on a phone.",
+      "assertions": [
+        "Runs node scripts/phone_harness.mjs against the repo root",
+        "Passes --out to a directory outside the repo",
+        "Reports FAIL and WARN counts from the actual run",
+        "Says the result is Chromium emulation, not a real iPhone or Safari"
+      ]
+    },
+    {
+      "name": "fix_overflow_at_280",
+      "input": "The legal page side-scrolls on my folded phone. Fix it.",
+      "assertions": [
+        "Runs the harness with --viewports galaxy-fold or the default set",
+        "Fixes the element named in the horizontal scroll FAIL line",
+        "Re-runs the harness and shows the FAIL line gone before claiming it is fixed"
+      ]
+    },
+    {
+      "name": "mobile_screenshots",
+      "input": "Give me phone screenshots of every page before I publish.",
+      "assertions": [
+        "Runs the harness with screenshots on",
+        "Points to <out>/<viewport>/<page>.png",
+        "Does not commit screenshots into the repo"
+      ]
+    },
+    {
+      "name": "does_not_claim_live_site",
+      "input": "Is malachaigrant01-droid.github.io mobile friendly right now?",
+      "assertions": [
+        "States the harness tests local files, not the deployed URL",
+        "Does not claim the live site passes without saying the local copy was tested"
+      ]
+    }
+  ]
+}

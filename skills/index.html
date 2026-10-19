@@ -35,6 +35,27 @@
       </tbody>
     </table>
     <p class="muted">Honesty gate: no Cloudflare session in this publish path. <span class="mono">*.pages.dev</span> and the custom domain stay pending until Connect to Git is authorised in the dashboard.</p>
+
+    <h2>phone-harness</h2>
+    <p>Load every page in phone viewports (iPhone SE, iPhone 15, Pixel 7, Galaxy Fold) with headless Chromium. Reports horizontal scroll, missing viewport meta, blocked zoom, small tap targets, tiny text, 404s and JS errors, with full-page screenshots.</p>
+    <p>
+      <a href="./phone-harness/SKILL.md">SKILL.md</a> ·
+      <a href="./phone-harness/references/checks.md">Checks</a> ·
+      <a href="./phone-harness/references/viewports.md">Viewports</a> ·
+      <a href="./phone-harness/scripts/phone_harness.mjs">Script</a>
+    </p>
+    <table>
+      <thead>
+        <tr><th>Trigger</th><th>Fires</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Check the site on a phone</td><td>yes</td></tr>
+        <tr><td>Does the legal hub side-scroll on mobile?</td><td>yes</td></tr>
+        <tr><td>Take mobile screenshots of every page</td><td>yes</td></tr>
+        <tr><td>Send an SMS with Twilio</td><td>no — not a phone-call skill</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Honesty gate: Chromium emulation of local files. Not iOS Safari, not a real device, not the deployed URL.</p>
   </main>
   <footer>Malachai Grant / Hierarchy Engineer Advocate · NSW, Australia</footer>
 </body>
