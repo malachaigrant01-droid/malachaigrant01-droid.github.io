@@ -1,0 +1,13 @@
+{
+  "skill": "phone-harness",
+  "test_cases": [
+    { "input": "Check the site on a phone", "should_trigger": true },
+    { "input": "Run the phone harness", "should_trigger": true },
+    { "input": "Does the legal hub side-scroll on mobile?", "should_trigger": true },
+    { "input": "Take mobile screenshots of every page", "should_trigger": true },
+    { "input": "Are the tap targets big enough on phones?", "should_trigger": true },
+    { "input": "Send an SMS with Twilio", "should_trigger": false },
+    { "input": "Build an iOS app in Swift", "should_trigger": false },
+    { "input": "Connect GitHub to Cloudflare Pages", "should_trigger": false }
+  ]
+}

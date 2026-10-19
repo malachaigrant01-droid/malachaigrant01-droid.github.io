@@ -16,4 +16,7 @@ Project name: `abizmuth-hub`. Output directory: `.` (this repo root). Build comm
 
 Wrangler Action (`.github/workflows/cloudflare-pages.yml`) is `workflow_dispatch` only. It needs GitHub secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Prefer Connect to Git so those secrets stay out of GitHub.
 
-Agent skill: [`skills/cloudflare-login-connections/`](./skills/cloudflare-login-connections/).
+Agent skills:
+
+- [`skills/cloudflare-login-connections/`](./skills/cloudflare-login-connections/)
+- [`skills/phone-harness/`](./skills/phone-harness/): phone-viewport checks. `node skills/phone-harness/scripts/phone_harness.mjs . --out /tmp/phone`
